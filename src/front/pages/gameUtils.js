@@ -7,10 +7,45 @@
    - Formato nuevo: [{q, opts:[4], correct:0}]
    - Formato viejo: ["pregunta 1", "pregunta 2"]  → modo presentación
 */
+// Intenta reparar JSON con claves sin comillas (datos migrados de la plataforma vieja)
+const repairJson = (str) => {
+  if (typeof str !== 'string') return str;
+  let s = str.trim();
+  try {
+    JSON.parse(s);
+    return s; // ya es válido
+  } catch {}
+  // Pone comillas a las claves: {q: → {"q":  y  ,correct: → ,"correct":
+  s = s.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":');
+  return s;
+};
+
+/* Repara el JSON de preguntas migrado sin comillas (formato viejo: {q:...,opts:[...],correct:N}) */
+const repairQuestionsJson = (str) => {
+  const questions = [];
+  let s = String(str).replace(/\\/g, ''); // quita barras invertidas sueltas
+  const blockRegex = /q:(.*?),opts:\[(.*?)\],correct:(\d+)/g;
+  let m;
+  while ((m = blockRegex.exec(s)) !== null) {
+    const q = m[1].trim();
+    const opts = m[2].split(',').map(o => o.trim()).filter(Boolean);
+    const correct = parseInt(m[3], 10);
+    if (q && opts.length >= 2) {
+      questions.push({ q, opts, correct: (correct >= 0 && correct < opts.length) ? correct : 0 });
+    }
+  }
+  return questions;
+};
+
 export const normalizeQuestions = (rawJson) => {
   let data = rawJson;
-  if (typeof rawJson === 'string') {
-    try { data = JSON.parse(rawJson); } catch { return []; }
+    if (typeof rawJson === 'string') {
+    try {
+      data = JSON.parse(rawJson);
+    } catch {
+      // JSON migrado sin comillas → usa el reparador especializado
+      data = repairQuestionsJson(rawJson);
+    }
   }
   if (!Array.isArray(data)) return [];
 
