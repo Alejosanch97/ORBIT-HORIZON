@@ -23,6 +23,7 @@ export const DataTableEditor = ({ userData }) => {
     // --- Import JSON ---
     const [showJsonModal, setShowJsonModal] = useState(false);
     const [jsonText, setJsonText] = useState('');
+    const [jsonBatchRange, setJsonBatchRange] = useState('0-200'); // Lote por defecto
     const fileInputRef = useRef(null);
 
     const showToast = (message, type = 'success') => {
@@ -239,7 +240,7 @@ export const DataTableEditor = ({ userData }) => {
         return row;
     };
 
-    // Procesa el texto JSON (array de objetos o un solo objeto) y llena newRows
+    // Procesa el texto JSON (array de objetos o un solo objeto) y llena newRows por lotes
     const importJson = () => {
         if (!selectedTable) { showToast('Selecciona una tabla primero', 'error'); return; }
         let data;
@@ -255,11 +256,17 @@ export const DataTableEditor = ({ userData }) => {
         const lookup = buildColLookup();
         const mapped = arr.map(o => mapJsonRowToColumns(o, lookup));
 
-        // Reemplaza las filas nuevas (descarta las vacías iniciales)
-        setNewRows(mapped);
+        // Filtrar por el rango de lotes seleccionado
+        let finalRows = mapped;
+        if (jsonBatchRange !== 'all') {
+            const [start, end] = jsonBatchRange.split('-').map(Number);
+            finalRows = mapped.slice(start, end);
+        }
+
+        // Reemplaza las filas nuevas
+        setNewRows(finalRows);
         setShowJsonModal(false);
-        setJsonText('');
-        showToast(`${mapped.length} fila(s) cargada(s). Revisa y presiona Guardar.`);
+        showToast(`${finalRows.length} fila(s) cargadas (${jsonBatchRange}). Revisa y presiona Guardar.`);
     };
 
     const handleFileUpload = (e) => {
@@ -457,7 +464,7 @@ export const DataTableEditor = ({ userData }) => {
                             guardan como texto JSON.
                         </p>
 
-                        <div className="dt-modal-actions-top">
+                        <div className="dt-modal-actions-top" style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '10px' }}>
                             <button className="dt-btn ghost" onClick={() => fileInputRef.current?.click()}>
                                 <Upload size={14} /> Subir archivo .json
                             </button>
@@ -468,6 +475,24 @@ export const DataTableEditor = ({ userData }) => {
                                 style={{ display: 'none' }}
                                 onChange={handleFileUpload}
                             />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                                <label style={{ fontWeight: '500' }}>Lote:</label>
+                                <select 
+                                    value={jsonBatchRange} 
+                                    onChange={e => setJsonBatchRange(e.target.value)}
+                                    style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
+                                >
+                                    <option value="0-200">Filas 1 - 200</option>
+                                    <option value="200-400">Filas 201 - 400</option>
+                                    <option value="400-600">Filas 401 - 600</option>
+                                    <option value="600-800">Filas 601 - 800</option>
+                                    <option value="800-1000">Filas 801 - 1000</option>
+                                    <option value="1000-1200">Filas 1001 - 1200</option>
+                                    <option value="1200-1400">Filas 1201 - 1400</option>
+                                    <option value="1400-1700">Filas 1401 - 1700</option>
+                                    <option value="all">Todo completo (Sin corte)</option>
+                                </select>
+                            </div>
                         </div>
 
                         <textarea
@@ -475,7 +500,7 @@ export const DataTableEditor = ({ userData }) => {
                             value={jsonText}
                             onChange={e => setJsonText(e.target.value)}
                             placeholder='[ { "ID_Setup": "...", "Grade": "...", "Vocabulary Big 5": "..." } ]'
-                            rows={12}
+                            rows={10}
                         />
 
                         <div className="dt-modal-footer">
