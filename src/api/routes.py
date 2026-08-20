@@ -26,8 +26,10 @@ CORS(api)
 def now_iso():
     return datetime.utcnow().isoformat()
 
+
 def gen_id(prefix):
     return f"{prefix}-{int(datetime.utcnow().timestamp() * 1000)}"
+
 
 def get_colegio_id(data=None):
     """
@@ -130,10 +132,12 @@ def add_student_assignment(id_student):
     if not student:
         return jsonify({"status": "error", "message": "Estudiante no encontrado"}), 404
     try:
-        assignments = json.loads(student.Assignments) if student.Assignments else []
+        assignments = json.loads(
+            student.Assignments) if student.Assignments else []
         if not isinstance(assignments, list):
             assignments = []
-        assignments.append({"id": gen_id('ASG'), "date": now_iso(), "text": text.strip()})
+        assignments.append(
+            {"id": gen_id('ASG'), "date": now_iso(), "text": text.strip()})
         student.Assignments = json.dumps(assignments)
         student.Last_Updated = now_iso()
         db.session.commit()
@@ -154,10 +158,12 @@ def add_student_observation(id_student):
     if not student:
         return jsonify({"status": "error", "message": "Estudiante no encontrado"}), 404
     try:
-        observations = json.loads(student.Observations) if student.Observations else []
+        observations = json.loads(
+            student.Observations) if student.Observations else []
         if not isinstance(observations, list):
             observations = []
-        observations.append({"id": gen_id('OBS'), "date": now_iso(), "text": text.strip(), "author": author})
+        observations.append(
+            {"id": gen_id('OBS'), "date": now_iso(), "text": text.strip(), "author": author})
         student.Observations = json.dumps(observations)
         student.Last_Updated = now_iso()
         db.session.commit()
@@ -272,11 +278,13 @@ def get_activities_alias():
 @api.route('/activities/<string:id_activity>/assign', methods=['PUT'])
 def assign_activity(id_activity):
     body = request.get_json(silent=True) or {}
-    activity = ActivitiesCalendar.query.filter_by(ID_Activity=id_activity).first()
+    activity = ActivitiesCalendar.query.filter_by(
+        ID_Activity=id_activity).first()
     if not activity:
         return jsonify({"status": "error", "message": "Actividad no encontrada"}), 404
     try:
-        activity.Responsable_ID = body.get('Responsable_ID', activity.Responsable_ID)
+        activity.Responsable_ID = body.get(
+            'Responsable_ID', activity.Responsable_ID)
         db.session.commit()
         return jsonify({"status": "success", "data": activity.serialize()}), 200
     except Exception as e:
@@ -326,15 +334,24 @@ def save_or_update_activity_detail():
                       .first())
 
         if detail:
-            detail.Academic_Objective = data.get('Academic_Objective', detail.Academic_Objective)
-            detail.Target_Vocabulary = data.get('Target_Vocabulary', detail.Target_Vocabulary)
-            detail.Language_Structures = data.get('Language_Structures', detail.Language_Structures)
-            detail.Speaking_Challenge = data.get('Speaking_Challenge', detail.Speaking_Challenge)
-            detail.Interactive_Stages = data.get('Interactive_Stages', detail.Interactive_Stages)
-            detail.Resource_Links = data.get('Resource_Links', detail.Resource_Links)
-            detail.Evaluation_Method = data.get('Evaluation_Method', detail.Evaluation_Method)
-            detail.Evidence_Preview = data.get('Evidence_Preview', detail.Evidence_Preview)
-            detail.Budget_Status = data.get('Budget_Status', detail.Budget_Status)
+            detail.Academic_Objective = data.get(
+                'Academic_Objective', detail.Academic_Objective)
+            detail.Target_Vocabulary = data.get(
+                'Target_Vocabulary', detail.Target_Vocabulary)
+            detail.Language_Structures = data.get(
+                'Language_Structures', detail.Language_Structures)
+            detail.Speaking_Challenge = data.get(
+                'Speaking_Challenge', detail.Speaking_Challenge)
+            detail.Interactive_Stages = data.get(
+                'Interactive_Stages', detail.Interactive_Stages)
+            detail.Resource_Links = data.get(
+                'Resource_Links', detail.Resource_Links)
+            detail.Evaluation_Method = data.get(
+                'Evaluation_Method', detail.Evaluation_Method)
+            detail.Evidence_Preview = data.get(
+                'Evidence_Preview', detail.Evidence_Preview)
+            detail.Budget_Status = data.get(
+                'Budget_Status', detail.Budget_Status)
             detail.Feedback = data.get('Feedback', detail.Feedback)
             detail.Score = data.get('Score', detail.Score)
             detail.Last_Updated = now_iso()
@@ -396,7 +413,8 @@ def save_or_update_class_observation():
     try:
         obs = None
         if lesson_ref:
-            obs = ClassObservations.query.filter_by(ID_Lesson_Ref=lesson_ref).first()
+            obs = ClassObservations.query.filter_by(
+                ID_Lesson_Ref=lesson_ref).first()
 
         if action_type == 'update' and obs:
             pass  # cae al bloque de asignación de abajo
@@ -411,21 +429,34 @@ def save_or_update_class_observation():
         obs.Teacher = pick('Teacher', default=obs.Teacher)
         obs.Grade = pick('Grade', default=obs.Grade)
         obs.Subject = pick('Subject', default=obs.Subject)
-        obs.Timing_Control = pick('Timing_Control', 'Timing Control', default=obs.Timing_Control or 0)
-        obs.The_Hook_Check = pick('The_Hook_Check', 'The Hook Check', default=obs.The_Hook_Check or 0)
-        obs.Vocabulary_Focus = pick('Vocabulary_Focus', 'Vocabulary Focus', default=obs.Vocabulary_Focus or 0)
-        obs.Scaffolding_Check = pick('Scaffolding_Check', 'Scaffolding Check', default=obs.Scaffolding_Check or 0)
-        obs.Student_Talk_Time = pick('Student_Talk_Time', 'Student Talk Time', default=obs.Student_Talk_Time or 0)
-        obs.Thinking_Routine = pick('Thinking_Routine', 'Thinking Routine', default=obs.Thinking_Routine or 0)
-        obs.Resource_Sync = pick('Resource_Sync', 'Resource Sync', default=obs.Resource_Sync or 0)
-        obs.Discipline_Flow = pick('Discipline_Flow', 'Discipline & Flow', default=obs.Discipline_Flow or 0)
-        obs.Goal_Achievement = pick('Goal_Achievement', 'Goal Achievement', default=obs.Goal_Achievement or 0)
+        obs.Timing_Control = pick(
+            'Timing_Control', 'Timing Control', default=obs.Timing_Control or 0)
+        obs.The_Hook_Check = pick(
+            'The_Hook_Check', 'The Hook Check', default=obs.The_Hook_Check or 0)
+        obs.Vocabulary_Focus = pick(
+            'Vocabulary_Focus', 'Vocabulary Focus', default=obs.Vocabulary_Focus or 0)
+        obs.Scaffolding_Check = pick(
+            'Scaffolding_Check', 'Scaffolding Check', default=obs.Scaffolding_Check or 0)
+        obs.Student_Talk_Time = pick(
+            'Student_Talk_Time', 'Student Talk Time', default=obs.Student_Talk_Time or 0)
+        obs.Thinking_Routine = pick(
+            'Thinking_Routine', 'Thinking Routine', default=obs.Thinking_Routine or 0)
+        obs.Resource_Sync = pick(
+            'Resource_Sync', 'Resource Sync', default=obs.Resource_Sync or 0)
+        obs.Discipline_Flow = pick(
+            'Discipline_Flow', 'Discipline & Flow', default=obs.Discipline_Flow or 0)
+        obs.Goal_Achievement = pick(
+            'Goal_Achievement', 'Goal Achievement', default=obs.Goal_Achievement or 0)
         obs.Score = pick('Score', default=obs.Score or 0)
         obs.Global_Score = pick('Global_Score', default=obs.Global_Score or 0)
-        obs.Audio_Video_URL = pick('Audio_Video_URL', 'Audio/Video URL', default=obs.Audio_Video_URL)
-        obs.Feedback = pick('Feedback', 'Feedback Action', default=obs.Feedback)
-        obs.Areas_for_Improvement = pick('Areas_for_Improvement', 'Areas for Improvement', default=obs.Areas_for_Improvement)
-        obs.Next_Steps = pick('Next_Steps', 'Next Steps', default=obs.Next_Steps)
+        obs.Audio_Video_URL = pick(
+            'Audio_Video_URL', 'Audio/Video URL', default=obs.Audio_Video_URL)
+        obs.Feedback = pick('Feedback', 'Feedback Action',
+                            default=obs.Feedback)
+        obs.Areas_for_Improvement = pick(
+            'Areas_for_Improvement', 'Areas for Improvement', default=obs.Areas_for_Improvement)
+        obs.Next_Steps = pick('Next_Steps', 'Next Steps',
+                              default=obs.Next_Steps)
         obs.Commitment = pick('Commitment', default=obs.Commitment)
 
         db.session.commit()
@@ -460,12 +491,17 @@ def save_lumi_config():
     if not teacher_key:
         return jsonify({"status": "error", "message": "Teacher_Key es requerido"}), 400
     try:
-        config_record = LumiConfig.query.filter_by(Teacher_Key=teacher_key).first()
+        config_record = LumiConfig.query.filter_by(
+            Teacher_Key=teacher_key).first()
         if config_record:
-            config_record.Avatar_Style = data.get('Avatar_Style', config_record.Avatar_Style)
-            config_record.Avatar_Seed = data.get('Avatar_Seed', config_record.Avatar_Seed)
-            config_record.Avatar_Options_JSON = data.get('Avatar_Options_JSON', config_record.Avatar_Options_JSON)
-            config_record.Lumi_Name = data.get('Lumi_Name', config_record.Lumi_Name)
+            config_record.Avatar_Style = data.get(
+                'Avatar_Style', config_record.Avatar_Style)
+            config_record.Avatar_Seed = data.get(
+                'Avatar_Seed', config_record.Avatar_Seed)
+            config_record.Avatar_Options_JSON = data.get(
+                'Avatar_Options_JSON', config_record.Avatar_Options_JSON)
+            config_record.Lumi_Name = data.get(
+                'Lumi_Name', config_record.Lumi_Name)
             config_record.Last_Updated = now_iso()
         else:
             config_record = LumiConfig(
@@ -545,7 +581,8 @@ def update_notification_status(notification_id):
         return jsonify({"status": "error", "message": "Faltan datos en el body"}), 400
     data = body.get('data', body)
     try:
-        notification = TeacherNotifications.query.filter_by(ID_Notification=notification_id).first()
+        notification = TeacherNotifications.query.filter_by(
+            ID_Notification=notification_id).first()
         if not notification:
             return jsonify({"status": "error", "message": "Notificación no encontrada"}), 404
         notification.Status = data.get('Status', notification.Status)
@@ -565,7 +602,8 @@ def mark_notifications_read():
         return jsonify({"status": "error", "message": "ids debe ser una lista"}), 400
     try:
         for nid in ids:
-            n = TeacherNotifications.query.filter_by(ID_Notification=nid).first()
+            n = TeacherNotifications.query.filter_by(
+                ID_Notification=nid).first()
             if n:
                 n.Status = 'read'
         db.session.commit()
@@ -587,7 +625,7 @@ def get_lesson_planners():
         if term:
             query = query.filter_by(Term=term)
         if teacher:
-            query = query.filter_by(TeacherSource=teacher)
+            query = query.filter_by(Teacher=teacher)
         return jsonify([p.serialize() for p in query.all()]), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -605,29 +643,42 @@ def _apply_planner_fields(plan, data):
     plan.Subject = g('Subject', default=plan.Subject)
     plan.Term = g('Term', default=plan.Term)
     plan.Start_Date = g('Start Date', 'Start_Date', default=plan.Start_Date)
-    plan.Finish_Date = g('Finish Date', 'Finish_Date', default=plan.Finish_Date)
+    plan.Finish_Date = g('Finish Date', 'Finish_Date',
+                         default=plan.Finish_Date)
     plan.Session_Number = g('Session_Number', default=plan.Session_Number)
     plan.Topic = g('Topic', default=plan.Topic)
     plan.Objective = g('Objective', default=plan.Objective)
     plan.The_Hook = g('The Hook', 'The_Hook', default=plan.The_Hook)
     plan.Big_5 = g('Vocabulary Big 5', 'Vocabulary_Big_5', default=plan.Big_5)
-    plan.Thinking_Skill = g('Thinking Skill', 'Thinking_Skill', default=plan.Thinking_Skill)
-    plan.Language_Frame = g('Language Frame', 'Language_Frame', default=plan.Language_Frame)
-    plan.Thinking_Routine = g('Thinking Routine', 'Thinking_Routine', default=plan.Thinking_Routine)
-    plan.Richmond_Resources = g('Richmond Resources', 'Richmond_Resources', default=plan.Richmond_Resources)
-    plan.Activity_Link = g('Activity Link', 'Activity_Link', default=plan.Activity_Link)
-    plan.Parent_Task = g('Parent Task', 'Parent_Task', default=plan.Parent_Task)
-    plan.Weekly_Challenge = g('Weekly Challenge', 'Weekly_Challenge', default=plan.Weekly_Challenge)
-    plan.Percent_Status = g('% Status', 'Percent_Status', default=plan.Percent_Status)
-    plan.TeacherSource = g('Teacher', 'TeacherSource', default=plan.TeacherSource)
+    plan.Thinking_Skill = g(
+        'Thinking Skill', 'Thinking_Skill', default=plan.Thinking_Skill)
+    plan.Language_Frame = g(
+        'Language Frame', 'Language_Frame', default=plan.Language_Frame)
+    plan.Thinking_Routine = g(
+        'Thinking Routine', 'Thinking_Routine', default=plan.Thinking_Routine)
+    plan.Richmond_Resources = g(
+        'Richmond Resources', 'Richmond_Resources', default=plan.Richmond_Resources)
+    plan.Activity_Link = g(
+        'Activity Link', 'Activity_Link', default=plan.Activity_Link)
+    plan.Parent_Task = g('Parent Task', 'Parent_Task',
+                         default=plan.Parent_Task)
+    plan.Weekly_Challenge = g(
+        'Weekly Challenge', 'Weekly_Challenge', default=plan.Weekly_Challenge)
+    plan.Percent_Status = g('% Status', 'Percent_Status',
+                            default=plan.Percent_Status)
+    plan.Teacher = g('Teacher', 'TeacherSource', default=plan.Teacher)
     plan.AI_Content_JSON = g('AI_Content_JSON', default=plan.AI_Content_JSON)
     plan.ClassDojo_Link = g('ClassDojo_Link', default=plan.ClassDojo_Link)
-    plan.Interactive_Feedback = g('Interactive_Feedback', default=plan.Interactive_Feedback)
-    plan.Feedback_Questions_JSON = g('Feedback_Questions_JSON', default=plan.Feedback_Questions_JSON)
+    plan.Interactive_Feedback = g(
+        'Interactive_Feedback', default=plan.Interactive_Feedback)
+    plan.Feedback_Questions_JSON = g(
+        'Feedback_Questions_JSON', default=plan.Feedback_Questions_JSON)
     plan.DBA_Reference = g('DBA_Reference', default=plan.DBA_Reference)
     plan.SDG_Connection = g('SDG_Connection', default=plan.SDG_Connection)
-    plan.Assessment_Dimension = g('Assessment_Dimension', default=plan.Assessment_Dimension)
-    plan.Evaluation_Instrument = g('Evaluation_Instrument', default=plan.Evaluation_Instrument)
+    plan.Assessment_Dimension = g(
+        'Assessment_Dimension', default=plan.Assessment_Dimension)
+    plan.Evaluation_Instrument = g(
+        'Evaluation_Instrument', default=plan.Evaluation_Instrument)
     return plan
 
 
@@ -730,17 +781,21 @@ def update_weekly_challenge(id_challenge):
     if not body:
         return jsonify({"status": "error", "message": "Faltan datos en el body"}), 400
     data = body.get('data', body)
-    challenge = WeeklyChallenges.query.filter_by(ID_Challenge=id_challenge).first()
+    challenge = WeeklyChallenges.query.filter_by(
+        ID_Challenge=id_challenge).first()
     if not challenge:
         return jsonify({"status": "error", "message": "Reto no encontrado"}), 404
     try:
         challenge.Teacher_Key = data.get('Teacher_Key', challenge.Teacher_Key)
-        challenge.Challenge_Description = data.get('Challenge_Description', challenge.Challenge_Description)
+        challenge.Challenge_Description = data.get(
+            'Challenge_Description', challenge.Challenge_Description)
         challenge.Start_Date = data.get('Start_Date', challenge.Start_Date)
         challenge.Days_Active = data.get('Days_Active', challenge.Days_Active)
         challenge.Status = data.get('Status', challenge.Status)
-        challenge.Evidence_Note = data.get('Evidence_Note', challenge.Evidence_Note)
-        challenge.Bilingual_Resources = data.get('Bilingual_Resources', challenge.Bilingual_Resources)
+        challenge.Evidence_Note = data.get(
+            'Evidence_Note', challenge.Evidence_Note)
+        challenge.Bilingual_Resources = data.get(
+            'Bilingual_Resources', challenge.Bilingual_Resources)
         db.session.commit()
         return jsonify({"status": "success", "data": challenge.serialize()}), 200
     except Exception as e:
@@ -750,7 +805,8 @@ def update_weekly_challenge(id_challenge):
 
 @api.route('/weekly-challenges/<string:id_challenge>', methods=['DELETE'])
 def delete_weekly_challenge(id_challenge):
-    challenge = WeeklyChallenges.query.filter_by(ID_Challenge=id_challenge).first()
+    challenge = WeeklyChallenges.query.filter_by(
+        ID_Challenge=id_challenge).first()
     if not challenge:
         return jsonify({"status": "error", "message": "Reto no encontrado"}), 404
     try:
@@ -850,7 +906,6 @@ def generate_lumi():
     }), 200
 
 
-
 TABLE_REGISTRY = {
     "Curriculum_Maps":     CurriculumMaps,
     "Syllabus_Templates":  SyllabusTemplates,
@@ -869,6 +924,7 @@ TABLE_REGISTRY = {
     "Logs_IA":             LogsIA,
 }
 
+
 def _editable_columns(model):
     """Columnas de la tabla que el usuario puede editar (excluye id y relaciones)."""
     cols = []
@@ -881,6 +937,7 @@ def _editable_columns(model):
 # ==========================================
 # SUPER ADMIN — MINI EXCEL GENÉRICO
 # ==========================================
+
 
 @api.route('/admin/tables', methods=['GET'])
 def list_tables():

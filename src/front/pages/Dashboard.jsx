@@ -264,9 +264,12 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
     }, [store.activities, teacherName]);
 
     const vocabularyData = useMemo(() => {
+        const myKeys = [teacherKey, teacherName]
+            .map(k => String(k || "").trim().toUpperCase())
+            .filter(Boolean);
         return (lessonPlanners || []).filter(p => {
-            const pt = String(p.Teacher || p.TeacherSource || "").trim();
-            return pt === teacherKey || pt === teacherName;
+            const pt = String(p.Teacher || "").trim().toUpperCase();
+            return myKeys.includes(pt);
         });
     }, [lessonPlanners, teacherKey, teacherName]);
 
@@ -919,7 +922,7 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
                         </button>
                     )}
 
-                                        {isSuperAdmin && (
+                    {isSuperAdmin && (
                         <>
                             <div className="ls-section-divider">
                                 <ShieldCheck size={13} strokeWidth={2.5} />

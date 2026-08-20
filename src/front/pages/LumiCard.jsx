@@ -3,15 +3,15 @@ import '../Styles/planning.css';
 import { AVATAR_STYLE, DEFAULT_CFG, buildAvatarUrl } from './lumiAvatar';
 import useGlobalReducer from '../hooks/useGlobalReducer'; // <--- Importa tu hook global
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbxIgwbIuGymDkRREiidM0lJYZRi5KdKS217_inoU751zp_x3EAzzxcljjNHSxZc34zBxQ/exec';
+const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
 /* ============================================================
    MENSAJES DE LUMI (rotan cada cierto tiempo)
    ============================================================ */
 
-const WELCOME_MESSAGE = { 
-  tag: '👋 Bienvenida', 
-  text: '¡Hola, {name}! Soy Lumi, tu asistente. Estoy aquí para acompañarte en tus planeaciones y en el día a día.' 
+const WELCOME_MESSAGE = {
+  tag: '👋 Bienvenida',
+  text: '¡Hola, {name}! Soy Lumi, tu asistente. Estoy aquí para acompañarte en tus planeaciones y en el día a día.'
 };
 
 const LUMI_MESSAGES = [
@@ -109,11 +109,11 @@ export const LumiCard = ({ userData, stats = {}, notifications = [], onNotificat
         });
         setLoaded(true);
       }
-    } catch {}
+    } catch { }
 
     const loadConfig = async () => {
       try {
-        const resp = await fetch(`${API_URL}?sheet=Lumi_Config`);
+        const resp = await fetch(`${API}/lumi-config?teacher_key=${encodeURIComponent(teacherKey)}`);
         const data = await resp.json();
         if (Array.isArray(data)) {
           const mine = data.find(r => String(r.Teacher_Key || '').trim() === teacherKey);
@@ -128,12 +128,12 @@ export const LumiCard = ({ userData, stats = {}, notifications = [], onNotificat
               backgroundColor: opts.backgroundColor || DEFAULT_CFG.backgroundColor,
             };
             const loadedName = mine.Lumi_Name || 'Lumi';
-            
+
             dispatch({
               type: 'set_lumi_config',
               payload: { config: loadedCfg, name: loadedName }
             });
-            try { localStorage.setItem(`lumiCfg_${teacherKey}`, JSON.stringify({ ...loadedCfg, name: loadedName })); } catch {}
+            try { localStorage.setItem(`lumiCfg_${teacherKey}`, JSON.stringify({ ...loadedCfg, name: loadedName })); } catch { }
           }
         }
       } catch (e) { console.error('Error cargando config de Lumi:', e); }
@@ -160,7 +160,7 @@ export const LumiCard = ({ userData, stats = {}, notifications = [], onNotificat
     setSaving(true);
     try {
       // Ajustado a la ruta POST nativa '/lumi-config' que creamos en Flask
-      await fetch('https://tu-backend-api.com/lumi-config', {
+      await fetch(`${API}/lumi-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -183,7 +183,7 @@ export const LumiCard = ({ userData, stats = {}, notifications = [], onNotificat
         payload: { config: draftCfg, name: draftName || 'Lumi' }
       });
 
-      try { localStorage.setItem(`lumiCfg_${teacherKey}`, JSON.stringify({ ...draftCfg, name: draftName })); } catch {}
+      try { localStorage.setItem(`lumiCfg_${teacherKey}`, JSON.stringify({ ...draftCfg, name: draftName })); } catch { }
       setCustomizing(false);
     } catch (e) {
       alert('No pude guardar los cambios. Intenta de nuevo.');
@@ -204,10 +204,11 @@ export const LumiCard = ({ userData, stats = {}, notifications = [], onNotificat
     const ids = unread.map(n => n.ID_Notification);
     if (onNotificationsRead) onNotificationsRead(ids);
     try {
-      await Promise.all(unread.map(n => fetch(API_URL, {
+      await fetch(`${API}/teacher-notifications/mark-read`, {
         method: 'POST',
-        body: JSON.stringify({ action: 'markNotificationRead', idValue: n.ID_Notification })
-      })));
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
     } catch (e) { console.error('No se pudieron marcar como leídas:', e); }
   };
 
