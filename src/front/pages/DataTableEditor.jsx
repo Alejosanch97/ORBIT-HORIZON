@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import '../Styles/datatable.css';
-import { Table, Save, Plus, Trash2, ClipboardPaste, Database } from 'lucide-react';
+import { Table, Save, Plus, Trash2, ClipboardPaste, Database, FileJson, X, Upload } from 'lucide-react';
 
 const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
@@ -19,6 +19,11 @@ export const DataTableEditor = ({ userData }) => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState(null);
+
+    // --- Import JSON ---
+    const [showJsonModal, setShowJsonModal] = useState(false);
+    const [jsonText, setJsonText] = useState('');
+    const fileInputRef = useRef(null);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
@@ -191,6 +196,82 @@ export const DataTableEditor = ({ userData }) => {
         });
     };
 
+    // ---------- IMPORTAR JSON ----------
+
+    // Normaliza una clave: minúsculas, sin acentos, espacios/guiones -> _
+    const normalizeKey = (k) =>
+        String(k).trim()
+            .toLowerCase()
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/%/g, 'percent')
+            .replace(/[\s\-]+/g, '_')
+            .replace(/_+/g, '_');
+
+    // Mapea las claves del JSON a las columnas reales de la tabla.
+    // Maneja "Vocabulary Big 5" -> Big_5, "% Status" -> Percent_Status, etc.
+    const buildColLookup = () => {
+        const colByNorm = {};
+        columns.forEach(col => { colByNorm[normalizeKey(col)] = col; });
+        // Alias manuales para claves que no coinciden por normalización
+        const aliases = {
+            'vocabulary_big_5': 'Big_5',
+            'vocabulary_big5': 'Big_5',
+            'big5': 'Big_5',
+            'big_5': 'Big_5',
+            'percent_status': 'Percent_Status',
+            'status': 'Percent_Status',
+        };
+        return { colByNorm, aliases };
+    };
+
+    const mapJsonRowToColumns = (obj, lookup) => {
+        const { colByNorm, aliases } = lookup;
+        const row = makeEmptyRow(columns);
+        Object.entries(obj).forEach(([rawKey, val]) => {
+            const nk = normalizeKey(rawKey);
+            const targetCol = colByNorm[nk] || aliases[nk];
+            if (targetCol && columns.includes(targetCol)) {
+                row[targetCol] = (val !== null && typeof val === 'object')
+                    ? JSON.stringify(val)
+                    : (val ?? '');
+            }
+        });
+        return row;
+    };
+
+    // Procesa el texto JSON (array de objetos o un solo objeto) y llena newRows
+    const importJson = () => {
+        if (!selectedTable) { showToast('Selecciona una tabla primero', 'error'); return; }
+        let data;
+        try {
+            data = JSON.parse(jsonText);
+        } catch (e) {
+            showToast('JSON inválido, revisa el formato', 'error');
+            return;
+        }
+        const arr = Array.isArray(data) ? data : [data];
+        if (arr.length === 0) { showToast('El JSON está vacío', 'error'); return; }
+
+        const lookup = buildColLookup();
+        const mapped = arr.map(o => mapJsonRowToColumns(o, lookup));
+
+        // Reemplaza las filas nuevas (descarta las vacías iniciales)
+        setNewRows(mapped);
+        setShowJsonModal(false);
+        setJsonText('');
+        showToast(`${mapped.length} fila(s) cargada(s). Revisa y presiona Guardar.`);
+    };
+
+    const handleFileUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => setJsonText(ev.target.result);
+        reader.onerror = () => showToast('No se pudo leer el archivo', 'error');
+        reader.readAsText(file);
+        e.target.value = ''; // permite re-subir el mismo archivo
+    };
+
     const addEmptyRows = () => {
         setNewRows(prev => [...prev, ...Array.from({ length: 5 }, () => makeEmptyRow(columns))]);
     };
@@ -241,7 +322,7 @@ export const DataTableEditor = ({ userData }) => {
                 <div className="dt-head-icon"><Table size={22} strokeWidth={2} /></div>
                 <div>
                     <h2 className="dt-title">Datos en tabla</h2>
-                    <p className="dt-subtitle">Carga masiva estilo Excel. Pega con Ctrl+V directo desde tu hoja de cálculo.</p>
+                    <p className="dt-subtitle">Carga masiva estilo Excel. Pega con Ctrl+V directo desde tu hoja de cálculo o importa un JSON.</p>
                 </div>
             </div>
 
@@ -278,6 +359,9 @@ export const DataTableEditor = ({ userData }) => {
                             <Database size={13} /> {existingRows.length} existentes
                         </span>
                         <div className="dt-toolbar-actions">
+                            <button className="dt-btn ghost" onClick={() => setShowJsonModal(true)}>
+                                <FileJson size={14} /> Subir JSON
+                            </button>
                             <button className="dt-btn ghost" onClick={addEmptyRows}>
                                 <Plus size={14} /> Más filas
                             </button>
@@ -351,6 +435,59 @@ export const DataTableEditor = ({ userData }) => {
                         </table>
                     </div>
                 </>
+            )}
+
+            {/* Modal Importar JSON */}
+            {showJsonModal && (
+                <div className="dt-modal-overlay" onClick={() => setShowJsonModal(false)}>
+                    <div className="dt-modal" onClick={e => e.stopPropagation()}>
+                        <div className="dt-modal-head">
+                            <div className="dt-modal-title">
+                                <FileJson size={18} /> Importar JSON
+                            </div>
+                            <button className="dt-modal-close" onClick={() => setShowJsonModal(false)}>
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <p className="dt-modal-hint">
+                            Pega un arreglo JSON o sube un archivo <code>.json</code>. Las claves se mapean
+                            automáticamente a las columnas (ej. <code>Vocabulary Big 5</code> → <code>Big_5</code>,
+                            <code> % Status</code> → <code>Percent_Status</code>). Los objetos anidados se
+                            guardan como texto JSON.
+                        </p>
+
+                        <div className="dt-modal-actions-top">
+                            <button className="dt-btn ghost" onClick={() => fileInputRef.current?.click()}>
+                                <Upload size={14} /> Subir archivo .json
+                            </button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".json,application/json"
+                                style={{ display: 'none' }}
+                                onChange={handleFileUpload}
+                            />
+                        </div>
+
+                        <textarea
+                            className="dt-json-textarea"
+                            value={jsonText}
+                            onChange={e => setJsonText(e.target.value)}
+                            placeholder='[ { "ID_Setup": "...", "Grade": "...", "Vocabulary Big 5": "..." } ]'
+                            rows={12}
+                        />
+
+                        <div className="dt-modal-footer">
+                            <button className="dt-btn ghost" onClick={() => { setJsonText(''); }}>
+                                Limpiar
+                            </button>
+                            <button className="dt-btn primary" onClick={importJson}>
+                                <FileJson size={14} /> Cargar en la tabla
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {toast && (

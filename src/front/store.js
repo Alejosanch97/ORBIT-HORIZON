@@ -38,7 +38,7 @@ export const initialStore = () => {
       eyes: 'default',
       mouth: 'default',
       baseColor: '#ffedd5',
-      backgroundColor: '#f3f4f6'
+      backgroundColor: ''
     },
     lumiName: 'Lumi',
 

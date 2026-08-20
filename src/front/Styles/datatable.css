@@ -160,3 +160,85 @@
     from { opacity: 0; transform: translate(-50%, 20px); }
     to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* ============ Modal Importar JSON ============ */
+.dt-modal-overlay {
+    position: fixed; inset: 0; z-index: 3500;
+    background: rgba(30, 27, 75, 0.45);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    animation: dt-overlay-in 0.2s ease;
+}
+@keyframes dt-overlay-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.dt-modal {
+    background: #ffffff;
+    border: 1px solid #eef2f7;
+    border-radius: 24px;
+    width: 100%; max-width: 660px;
+    max-height: 90vh; overflow-y: auto;
+    padding: 26px;
+    box-shadow: 0 24px 70px rgba(27, 36, 56, 0.28);
+    animation: dt-modal-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes dt-modal-in {
+    from { opacity: 0; transform: translateY(18px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dt-modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+}
+.dt-modal-title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1.15rem; font-weight: 800; color: #1e293b;
+}
+.dt-modal-title svg { color: #7c3aed; }
+
+.dt-modal-close {
+    display: flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px;
+    background: #f1f5f9; border: 1px solid #e2e8f0;
+    color: #64748b; cursor: pointer; border-radius: 10px; transition: 0.2s;
+}
+.dt-modal-close:hover { background: #e2e8f0; color: #1e293b; }
+
+.dt-modal-hint {
+    font-size: 0.82rem; color: #64748b; line-height: 1.6;
+    margin-bottom: 16px;
+    background: linear-gradient(160deg, #f5f3ff, #ecfeff);
+    border: 1px solid #ede9fe;
+    padding: 12px 16px; border-radius: 12px;
+}
+.dt-modal-hint code {
+    background: #ffffff; border: 1px solid #e2e8f0;
+    padding: 1px 6px; border-radius: 6px;
+    font-size: 0.74rem; color: #6d28d9; font-weight: 700;
+}
+
+.dt-modal-actions-top { margin-bottom: 12px; }
+
+.dt-json-textarea {
+    width: 100%; box-sizing: border-box;
+    background: #f8fafc;
+    border: 1.5px solid #e2e8f0; border-radius: 14px;
+    color: #1e293b;
+    font-family: 'SF Mono', 'Courier New', monospace;
+    font-size: 0.8rem; line-height: 1.5;
+    padding: 14px; resize: vertical; transition: 0.25s;
+}
+.dt-json-textarea:focus {
+    outline: none; background: #fff;
+    border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+.dt-json-textarea::placeholder { color: #94a3b8; }
+
+.dt-modal-footer {
+    display: flex; justify-content: flex-end; gap: 10px;
+    margin-top: 16px;
+}
