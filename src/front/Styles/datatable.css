@@ -1,0 +1,162 @@
+/* datatable.css — mini-Excel, degradado real cian #06b6d4 → violeta #7c3aed */
+
+.dt-container {
+    padding: 4px 2px 40px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #1e293b;
+}
+
+/* --- Encabezado --- */
+.dt-head { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.dt-head-icon {
+    width: 54px; height: 54px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(115deg, #06b6d4 0%, #7c3aed 100%); color: #fff;
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.25);
+}
+.dt-title { font-size: 1.6rem; font-weight: 800; margin: 0; color: #1e293b; }
+.dt-subtitle { font-size: 0.88rem; color: #64748b; margin: 3px 0 0; }
+
+/* --- Selectores --- */
+.dt-selectors { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+.dt-select-group { display: flex; flex-direction: column; gap: 8px; }
+.dt-select-group label {
+    font-size: 0.72rem; font-weight: 800; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.05em;
+}
+.dt-select-group select {
+    min-width: 260px; padding: 12px 14px;
+    border: 1.5px solid #e2e8f0; border-radius: 12px;
+    font-size: 0.95rem; background: #fff; color: #1e293b; outline: none; transition: 0.25s;
+}
+.dt-select-group select:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1); }
+
+/* --- Placeholder --- */
+.dt-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 70px 20px; color: #94a3b8; text-align: center;
+    background: #ffffff; border-radius: 24px;
+    box-shadow: 0 8px 30px rgba(27, 36, 56, 0.07);
+}
+.dt-placeholder svg { color: #c4b5fd; }
+
+/* --- Barra de acciones --- */
+.dt-toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 12px;
+}
+.dt-count {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-size: 0.82rem; color: #64748b; font-weight: 700;
+}
+.dt-count svg { color: #7c3aed; }
+.dt-toolbar-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.dt-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 11px 18px; border: none; border-radius: 12px;
+    font-size: 0.84rem; font-weight: 800; cursor: pointer; font-family: inherit;
+    transition: 0.25s;
+}
+.dt-btn.ghost {
+    background: #f1f5f9; color: #64748b;
+    border: 1px solid #e2e8f0;
+}
+.dt-btn.ghost:hover { background: #e2e8f0; color: #1e293b; }
+.dt-btn.primary {
+    background: linear-gradient(115deg, #06b6d4 0%, #7c3aed 100%); color: #fff;
+    box-shadow: 0 8px 22px rgba(124, 58, 237, 0.3);
+}
+.dt-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(124, 58, 237, 0.4); }
+.dt-btn.primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* --- Hint de pegado --- */
+.dt-paste-hint {
+    display: flex; align-items: center; gap: 9px;
+    background: linear-gradient(160deg, #f5f3ff, #ecfeff);
+    color: #6d28d9;
+    border: 1px solid #ede9fe;
+    padding: 10px 16px; border-radius: 12px;
+    font-size: 0.8rem; font-weight: 600; margin-bottom: 16px;
+}
+
+/* --- Mini-Excel --- */
+.dt-table-wrap {
+    overflow: auto; max-height: 62vh;
+    border-radius: 20px; background: #ffffff;
+    box-shadow: 0 8px 30px rgba(27, 36, 56, 0.07);
+    border: 1px solid #eef2f7;
+}
+.dt-table { border-collapse: collapse; width: 100%; font-size: 0.83rem; }
+
+.dt-table thead th {
+    position: sticky; top: 0; z-index: 2;
+    background: #1e1b4b; color: #fff; font-weight: 800;
+    padding: 14px; text-align: left; white-space: nowrap;
+    border-right: 1px solid #312e81; font-size: 0.78rem;
+    text-transform: uppercase; letter-spacing: 0.02em;
+}
+
+.dt-rownum {
+    width: 46px; text-align: center !important;
+    background: #f8fafc; color: #94a3b8; font-weight: 800;
+    position: sticky; left: 0; z-index: 1;
+}
+.dt-table thead .dt-rownum { background: #17153b; z-index: 3; }
+.dt-actions-col { width: 42px; }
+
+/* Filas existentes (solo lectura) */
+.dt-row-existing td {
+    padding: 0; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9;
+    max-width: 240px;
+}
+.dt-cell-readonly {
+    padding: 10px 14px; color: #64748b; background: #f8fafc;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px;
+}
+
+/* Separador */
+.dt-divider-row td {
+    background: linear-gradient(160deg, #f5f3ff, #ecfeff);
+    text-align: center; padding: 8px;
+    font-size: 0.72rem; font-weight: 800; color: #6d28d9;
+    letter-spacing: 0.06em;
+}
+
+/* Filas nuevas (editables) */
+.dt-row-new td {
+    padding: 0; border-bottom: 1px solid #f1f5f9; border-right: 1px solid #f1f5f9;
+}
+.dt-cell-input {
+    width: 100%; min-width: 130px; border: none; outline: none;
+    padding: 10px 14px; font-size: 0.83rem; background: transparent;
+    color: #1e293b; font-family: inherit;
+}
+.dt-cell-input:focus {
+    background: #f5f3ff;
+    box-shadow: inset 0 0 0 2px #7c3aed;
+}
+
+.dt-del-row {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; margin: 0 auto;
+    border: none; background: transparent; color: #cbd5e1;
+    cursor: pointer; border-radius: 8px; transition: 0.2s;
+}
+.dt-del-row:hover { background: #fff1f2; color: #f43f5e; }
+
+/* --- Toast --- */
+.dt-toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    padding: 14px 24px; border-radius: 50px;
+    font-size: 0.9rem; font-weight: 700; color: #fff;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 3000;
+    animation: dt-toast-in 0.3s ease;
+}
+.dt-toast.success { background: #10b981; box-shadow: 0 10px 24px rgba(16, 185, 129, 0.28); }
+.dt-toast.error { background: #f43f5e; box-shadow: 0 10px 24px rgba(244, 63, 94, 0.28); }
+
+@keyframes dt-toast-in {
+    from { opacity: 0; transform: translate(-50%, 20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}

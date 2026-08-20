@@ -1,0 +1,166 @@
+/* superadmin.css — degradado real del dashboard: cian #06b6d4 → violeta #7c3aed */
+
+.sa-container {
+    padding: 4px 2px 40px;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    color: #1e293b;
+}
+
+/* --- Encabezado --- */
+.sa-head { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; }
+.sa-head-icon {
+    width: 54px; height: 54px; border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(115deg, #06b6d4 0%, #7c3aed 100%); color: #fff;
+    box-shadow: 0 8px 24px rgba(124, 58, 237, 0.25);
+}
+.sa-title { font-size: 1.6rem; font-weight: 800; margin: 0; color: #1e293b; }
+.sa-subtitle { font-size: 0.88rem; color: #64748b; margin: 3px 0 0; }
+
+/* --- Layout --- */
+.sa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+@media (max-width: 900px) { .sa-grid { grid-template-columns: 1fr; gap: 20px; } }
+
+.sa-panel {
+    background: #ffffff;
+    border-radius: 24px;
+    box-shadow: 0 8px 30px rgba(27, 36, 56, 0.07);
+    padding: 30px;
+}
+.sa-panel-title {
+    display: flex; align-items: center; gap: 9px;
+    font-size: 1rem; font-weight: 800; color: #1e293b;
+    margin: 0 0 22px; padding-bottom: 14px;
+    border-bottom: 1px solid #f1f5f9;
+}
+.sa-panel-title svg { color: #7c3aed; }
+
+/* --- Formularios --- */
+.sa-form { display: flex; flex-direction: column; gap: 16px; }
+.sa-field { display: flex; flex-direction: column; gap: 8px; }
+.sa-field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+@media (max-width: 560px) { .sa-field-row { grid-template-columns: 1fr; } }
+
+.sa-field label {
+    font-size: 0.72rem; font-weight: 800; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.05em;
+}
+.sa-field label em { color: #f43f5e; font-style: normal; }
+
+.sa-field input, .sa-field select {
+    padding: 12px 14px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    outline: none;
+    background: #fff;
+    color: #1e293b;
+    transition: 0.25s;
+}
+.sa-field input:focus, .sa-field select:focus {
+    border-color: #7c3aed;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+/* --- Botones (gradiente firma) --- */
+.sa-btn {
+    padding: 14px 24px; border: none; border-radius: 14px;
+    font-size: 0.95rem; font-weight: 800; cursor: pointer;
+    font-family: inherit; transition: 0.25s;
+}
+.sa-btn.primary {
+    background: linear-gradient(115deg, #06b6d4 0%, #7c3aed 100%); color: #fff;
+    box-shadow: 0 8px 22px rgba(124, 58, 237, 0.3);
+}
+.sa-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(124, 58, 237, 0.4); }
+.sa-btn.primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+.sa-empty {
+    color: #94a3b8; font-size: 0.9rem; text-align: center; padding: 34px 0;
+}
+
+/* --- Selector de empresa --- */
+.sa-company-selector {
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 8px 30px rgba(27, 36, 56, 0.07);
+    padding: 18px 24px; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.sa-company-selector label {
+    font-size: 0.75rem; font-weight: 800; color: #64748b;
+    text-transform: uppercase; letter-spacing: 0.05em;
+}
+.sa-company-selector select {
+    flex: 1; max-width: 380px; padding: 12px 14px;
+    border: 1.5px solid #e2e8f0; border-radius: 12px; font-size: 0.95rem;
+    background: #fff; color: #1e293b; outline: none; transition: 0.25s;
+}
+.sa-company-selector select:focus { border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1); }
+
+/* --- Placeholder vacío --- */
+.sa-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 70px 20px; color: #94a3b8; text-align: center;
+    background: #ffffff; border-radius: 24px;
+    box-shadow: 0 8px 30px rgba(27, 36, 56, 0.07);
+}
+.sa-placeholder svg { color: #c4b5fd; }
+
+/* --- Listas de empresas y usuarios --- */
+.sa-company-list, .sa-user-list { display: flex; flex-direction: column; gap: 12px; }
+
+.sa-company-card, .sa-user-card {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 16px; border-radius: 16px;
+    background: #f8fafc; border: 1px solid #eef2f7;
+    transition: 0.25s;
+}
+.sa-company-card:hover, .sa-user-card:hover {
+    border-color: #c4b5fd; transform: translateX(3px);
+    box-shadow: 0 6px 20px rgba(124, 58, 237, 0.1);
+}
+
+.sa-company-avatar, .sa-user-avatar {
+    width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: linear-gradient(115deg, #06b6d4 0%, #7c3aed 100%); color: #fff;
+    font-weight: 800; font-size: 1.1rem;
+}
+
+.sa-company-info, .sa-user-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.sa-company-info strong, .sa-user-info strong { color: #1e293b; font-size: 0.95rem; font-weight: 800; }
+
+.sa-company-meta, .sa-user-meta { display: flex; flex-wrap: wrap; gap: 12px; }
+.sa-company-meta span, .sa-user-meta span {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.74rem; color: #94a3b8; font-weight: 600;
+}
+.sa-user-key { font-size: 0.78rem; color: #7c3aed; font-weight: 700; }
+.sa-company-id { font-size: 0.72rem; color: #cbd5e1; font-weight: 800; letter-spacing: 0.03em; }
+
+/* --- Badges de rol --- */
+.sa-role-badge {
+    font-size: 0.68rem; font-weight: 800; padding: 5px 12px; border-radius: 50px;
+    text-transform: uppercase; letter-spacing: 0.04em; flex-shrink: 0;
+}
+.sa-role-badge.teacher { background: #cffafe; color: #0e7490; }
+.sa-role-badge.admin { background: #ede9fe; color: #6d28d9; }
+.sa-role-badge.super-admin { background: linear-gradient(115deg, #06b6d4 0%, #7c3aed 100%); color: #fff; }
+
+/* --- Toast --- */
+.sa-toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 9px;
+    padding: 14px 24px; border-radius: 50px;
+    font-size: 0.9rem; font-weight: 700; color: #fff;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2); z-index: 3000;
+    animation: sa-toast-in 0.3s ease;
+}
+.sa-toast.success { background: #10b981; box-shadow: 0 10px 24px rgba(16, 185, 129, 0.28); }
+.sa-toast.error { background: #f43f5e; box-shadow: 0 10px 24px rgba(244, 63, 94, 0.28); }
+
+@keyframes sa-toast-in {
+    from { opacity: 0; transform: translate(-50%, 20px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
