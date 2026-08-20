@@ -413,8 +413,7 @@ class LessonPlanners(db.Model):
     Topic: Mapped[str] = mapped_column(String(255), nullable=True)
     Objective: Mapped[str] = mapped_column(Text, nullable=True)
     The_Hook: Mapped[str] = mapped_column(Text, nullable=True)
-    Vocabulary: Mapped[str] = mapped_column(Text, nullable=True)
-    Big_5: Mapped[str] = mapped_column(Text, nullable=True)  # Mantenido como Big_5
+    Big_5: Mapped[str] = mapped_column(Text, nullable=True)
     Thinking_Skill: Mapped[str] = mapped_column(Text, nullable=True)
     Language_Frame: Mapped[str] = mapped_column(Text, nullable=True)
     Thinking_Routine: Mapped[str] = mapped_column(Text, nullable=True)
@@ -423,7 +422,8 @@ class LessonPlanners(db.Model):
     Parent_Task: Mapped[str] = mapped_column(Text, nullable=True)
     Weekly_Challenge: Mapped[str] = mapped_column(Text, nullable=True)
     Percent_Status: Mapped[str] = mapped_column(String(50), nullable=True)
-    TeacherSource: Mapped[str] = mapped_column(String(100), nullable=True)
+    Teacher: Mapped[str] = mapped_column(String(100), nullable=True)
+    Source: Mapped[str] = mapped_column(String(100), nullable=True)
     AI_Content_JSON: Mapped[str] = mapped_column(Text, nullable=True)
     ClassDojo_Link: Mapped[str] = mapped_column(Text, nullable=True)
     Interactive_Feedback: Mapped[str] = mapped_column(Text, nullable=True)
@@ -466,8 +466,8 @@ class LessonPlanners(db.Model):
             "Weekly Challenge": self.Weekly_Challenge,
             "% Status": self.Percent_Status,
             "Percent_Status": self.Percent_Status,
-            "Teacher": self.TeacherSource,
-            "Source": "Lumi" if (self.AI_Content_JSON and self.AI_Content_JSON.strip()) else "Manual",
+            "Teacher": self.Teacher,
+            "Source": self.Source,
             "AI_Content_JSON": self.AI_Content_JSON,
             "ClassDojo_Link": self.ClassDojo_Link,
             "Interactive_Feedback": self.Interactive_Feedback,
