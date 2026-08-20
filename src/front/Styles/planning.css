@@ -1,6 +1,7 @@
 /* =========================================
    PLANNING PAGE - FULLY INTEGRATED & UPDATED
    ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 .planning-wrapper {
     /* Variables Locales */
@@ -1403,8 +1404,6 @@
    Gradiente de malla en pasteles · tarjetas translúcidas con blur
    · pestañas tipo pastilla flotante · cada bloque con su tinte.
    ============================================================ */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 .lesson-modal {
   --g-ink: #26304a;
