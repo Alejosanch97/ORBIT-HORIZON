@@ -402,6 +402,7 @@ class LessonPlanners(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     colegio_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('colegios.id'), nullable=False)
+    
     ID_Setup: Mapped[str] = mapped_column(String(100), nullable=False)
     Grade: Mapped[str] = mapped_column(String(100), nullable=True)
     Subject: Mapped[str] = mapped_column(String(100), nullable=True)
@@ -413,14 +414,12 @@ class LessonPlanners(db.Model):
     Objective: Mapped[str] = mapped_column(Text, nullable=True)
     The_Hook: Mapped[str] = mapped_column(Text, nullable=True)
     Vocabulary: Mapped[str] = mapped_column(Text, nullable=True)
-    # Vocabulary Big 5 puede pasar de 100
-    Big_5: Mapped[str] = mapped_column(Text, nullable=True)
+    Big_5: Mapped[str] = mapped_column(Text, nullable=True)  # Mantenido como Big_5
     Thinking_Skill: Mapped[str] = mapped_column(Text, nullable=True)
     Language_Frame: Mapped[str] = mapped_column(Text, nullable=True)
     Thinking_Routine: Mapped[str] = mapped_column(Text, nullable=True)
     Richmond_Resources: Mapped[str] = mapped_column(Text, nullable=True)
-    Activity_Link: Mapped[str] = mapped_column(
-        Text, nullable=True)  # varios links con coma
+    Activity_Link: Mapped[str] = mapped_column(Text, nullable=True)
     Parent_Task: Mapped[str] = mapped_column(Text, nullable=True)
     Weekly_Challenge: Mapped[str] = mapped_column(Text, nullable=True)
     Percent_Status: Mapped[str] = mapped_column(String(50), nullable=True)
@@ -438,33 +437,20 @@ class LessonPlanners(db.Model):
         "Colegio", back_populates="lesson_planners")
 
     def serialize(self):
-        # El front usa claves con espacios ("The Hook", "Vocabulary Big 5", "Start Date"...)
-        # Devolvemos AMBOS formatos para máxima compatibilidad con tus componentes.
         return {
             "id": self.id,
             "colegio_id": self.colegio_id,
             "ID_Setup": self.ID_Setup,
             "Grade": self.Grade,
             "Subject": self.Subject,
+            "Start Date": self.Start_Date,
+            "Start_Date": self.Start_Date,
+            "Finish Date": self.Finish_Date,
+            "Finish_Date": self.Finish_Date,
             "Term": self.Term,
             "Session_Number": self.Session_Number,
             "Topic": self.Topic,
             "Objective": self.Objective,
-            "Thinking_Routine": self.Thinking_Routine,
-            "Parent_Task": self.Parent_Task,
-            "Weekly_Challenge": self.Weekly_Challenge,
-            "Percent_Status": self.Percent_Status,
-            "Teacher": self.TeacherSource,          # el front lee p.Teacher
-            "Source": "Lumi" if (self.AI_Content_JSON and self.AI_Content_JSON.strip()) else "Manual",
-            "AI_Content_JSON": self.AI_Content_JSON,
-            "ClassDojo_Link": self.ClassDojo_Link,
-            "Interactive_Feedback": self.Interactive_Feedback,
-            "Feedback_Questions_JSON": self.Feedback_Questions_JSON,
-            "DBA_Reference": self.DBA_Reference,
-            "SDG_Connection": self.SDG_Connection,
-            "Assessment_Dimension": self.Assessment_Dimension,
-            "Evaluation_Instrument": self.Evaluation_Instrument,
-            # --- Claves con espacios que espera el frontend ---
             "The Hook": self.The_Hook,
             "The_Hook": self.The_Hook,
             "Vocabulary Big 5": self.Big_5,
@@ -478,10 +464,18 @@ class LessonPlanners(db.Model):
             "Activity_Link": self.Activity_Link,
             "Parent Task": self.Parent_Task,
             "Weekly Challenge": self.Weekly_Challenge,
-            "Start Date": self.Start_Date,
-            "Start_Date": self.Start_Date,
-            "Finish Date": self.Finish_Date,
-            "Finish_Date": self.Finish_Date,
+            "% Status": self.Percent_Status,
+            "Percent_Status": self.Percent_Status,
+            "Teacher": self.TeacherSource,
+            "Source": "Lumi" if (self.AI_Content_JSON and self.AI_Content_JSON.strip()) else "Manual",
+            "AI_Content_JSON": self.AI_Content_JSON,
+            "ClassDojo_Link": self.ClassDojo_Link,
+            "Interactive_Feedback": self.Interactive_Feedback,
+            "Feedback_Questions_JSON": self.Feedback_Questions_JSON,
+            "DBA_Reference": self.DBA_Reference,
+            "SDG_Connection": self.SDG_Connection,
+            "Assessment_Dimension": self.Assessment_Dimension,
+            "Evaluation_Instrument": self.Evaluation_Instrument,
         }
 
 
