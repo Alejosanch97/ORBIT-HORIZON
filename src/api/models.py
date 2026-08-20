@@ -418,7 +418,7 @@ class LessonPlanners(db.Model):
     Thinking_Skill: Mapped[str] = mapped_column(Text, nullable=True)
     Language_Frame: Mapped[str] = mapped_column(Text, nullable=True)
     Thinking_Routine: Mapped[str] = mapped_column(Text, nullable=True)
-    Richmond_Resources: Mapped[str] = mapped_column(String(255), nullable=True)
+    Richmond_Resources: Mapped[str] = mapped_column(Text, nullable=True)
     Activity_Link: Mapped[str] = mapped_column(
         Text, nullable=True)  # varios links con coma
     Parent_Task: Mapped[str] = mapped_column(Text, nullable=True)
@@ -426,15 +426,13 @@ class LessonPlanners(db.Model):
     Percent_Status: Mapped[str] = mapped_column(String(50), nullable=True)
     TeacherSource: Mapped[str] = mapped_column(String(100), nullable=True)
     AI_Content_JSON: Mapped[str] = mapped_column(Text, nullable=True)
-    ClassDojo_Link: Mapped[str] = mapped_column(String(255), nullable=True)
+    ClassDojo_Link: Mapped[str] = mapped_column(Text, nullable=True)
     Interactive_Feedback: Mapped[str] = mapped_column(Text, nullable=True)
     Feedback_Questions_JSON: Mapped[str] = mapped_column(Text, nullable=True)
-    DBA_Reference: Mapped[str] = mapped_column(String(255), nullable=True)
-    SDG_Connection: Mapped[str] = mapped_column(String(255), nullable=True)
-    Assessment_Dimension: Mapped[str] = mapped_column(
-        String(100), nullable=True)
-    Evaluation_Instrument: Mapped[str] = mapped_column(
-        String(100), nullable=True)
+    DBA_Reference: Mapped[str] = mapped_column(Text, nullable=True)
+    SDG_Connection: Mapped[str] = mapped_column(Text, nullable=True)
+    Assessment_Dimension: Mapped[str] = mapped_column(Text, nullable=True)
+    Evaluation_Instrument: Mapped[str] = mapped_column(Text, nullable=True)
 
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="lesson_planners")
