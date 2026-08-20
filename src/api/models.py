@@ -414,10 +414,10 @@ class LessonPlanners(db.Model):
     The_Hook: Mapped[str] = mapped_column(Text, nullable=True)
     Vocabulary: Mapped[str] = mapped_column(Text, nullable=True)
     # Vocabulary Big 5 puede pasar de 100
-    Big_5: Mapped[str] = mapped_column(String(255), nullable=True)
-    Thinking_Skill: Mapped[str] = mapped_column(String(255), nullable=True)
+    Big_5: Mapped[str] = mapped_column(Text, nullable=True)
+    Thinking_Skill: Mapped[str] = mapped_column(Text, nullable=True)
     Language_Frame: Mapped[str] = mapped_column(Text, nullable=True)
-    Thinking_Routine: Mapped[str] = mapped_column(String(100), nullable=True)
+    Thinking_Routine: Mapped[str] = mapped_column(Text, nullable=True)
     Richmond_Resources: Mapped[str] = mapped_column(String(255), nullable=True)
     Activity_Link: Mapped[str] = mapped_column(
         Text, nullable=True)  # varios links con coma
