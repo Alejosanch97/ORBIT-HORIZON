@@ -666,16 +666,14 @@ class ActivityDetailsForm(db.Model):
     Language_Structures: Mapped[str] = mapped_column(Text, nullable=True)
     Speaking_Challenge: Mapped[str] = mapped_column(Text, nullable=True)
     Interactive_Stages: Mapped[str] = mapped_column(Text, nullable=True)
-    Resource_Links: Mapped[str] = mapped_column(String(500), nullable=True)
-    Evaluation_Method: Mapped[str] = mapped_column(String(100), nullable=True)
-    Evidence_Preview: Mapped[str] = mapped_column(String(255), nullable=True)
-    Budget_Status: Mapped[str] = mapped_column(String(50), nullable=True)
+    Resource_Links: Mapped[str] = mapped_column(Text, nullable=True)
+    Evaluation_Method: Mapped[str] = mapped_column(String(255), nullable=True)
+    Evidence_Preview: Mapped[str] = mapped_column(Text, nullable=True)
+    Budget_Status: Mapped[str] = mapped_column(String(100), nullable=True)
     Last_Updated: Mapped[str] = mapped_column(String(50), nullable=True)
     Feedback_Score: Mapped[str] = mapped_column(String(50), nullable=True)
-    Feedback: Mapped[str] = mapped_column(
-        Text, nullable=True)     # ← AGREGADO (lo usa tu POST)
-    Score: Mapped[str] = mapped_column(
-        String(50), nullable=True)  # ← AGREGADO (lo usa tu POST)
+    Feedback: Mapped[str] = mapped_column(Text, nullable=True)
+    Score: Mapped[str] = mapped_column(String(50), nullable=True)
 
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="activity_details_form")
