@@ -43,7 +43,7 @@ def _call_groq(prompt, api_key, model):
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.7,
-        "max_tokens": 8000,
+        "max_tokens": 4000,
         "response_format": {"type": "json_object"},
     }
     r = requests.post(url, headers=headers, json=payload, timeout=TIMEOUT)
@@ -103,16 +103,18 @@ def generate_with_fallback(prompt):
     gemini_key = os.environ.get("GEMINI_API_KEY")
     mistral_key = os.environ.get("MISTRAL_API_KEY")
 
-    groq_model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
-    gemini_model = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash")
+    groq_model = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
+    gemini_model = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
     mistral_model = os.environ.get("MISTRAL_MODEL", "mistral-large-latest")
 
     # (nombre, función, condición de que exista la key)
     chain = [
-        ("groq",   lambda: _call_groq(prompt, groq_key, groq_model),    bool(groq_key)),
-        ("groq2",  lambda: _call_groq(prompt, groq_key2, groq_model),   bool(groq_key2)),
-        ("gemini", lambda: _call_gemini(prompt, gemini_key, gemini_model), bool(gemini_key)),
-        ("mistral", lambda: _call_mistral(prompt, mistral_key, mistral_model), bool(mistral_key)),
+        ("groq", lambda: _call_groq(prompt, groq_key, groq_model),    bool(groq_key)),
+        ("groq2", lambda: _call_groq(prompt, groq_key2, groq_model),   bool(groq_key2)),
+        ("gemini", lambda: _call_gemini(
+            prompt, gemini_key, gemini_model), bool(gemini_key)),
+        ("mistral", lambda: _call_mistral(
+            prompt, mistral_key, mistral_model), bool(mistral_key)),
     ]
 
     errors = []
