@@ -729,6 +729,8 @@ export const PlanningCLIL = ({ userData }) => {
     const teacherFirstName = (userData.Teacher_Name || userData.User_Key || 'profe').split(' ')[0];
     const teacherKeyForAvatar = String(userData.Teacher_Key || userData.User_Key || '').trim();
     const LUMI_AVATAR = buildAvatarUrl(getCachedLumiCfg(teacherKeyForAvatar), 120);
+    // Llave de borrador de Lumi ÚNICA por usuario (evita que un profe vea el chat de otro)
+    const LUMI_STATE_KEY = `lumi_chat_state_${String(userData.User_Key || userData.Teacher_Key || 'anon').trim()}`;
 
     const gradeOptions = isAdmin ? [...new Set(plannings.map(p => p.Grade))] : userGrades;
     const subjectOptions = isAdmin ? [...new Set(plannings.map(p => p.Subject))] : userSubjects;
@@ -827,7 +829,9 @@ export const PlanningCLIL = ({ userData }) => {
     const [lumiRestored, setLumiRestored] = useState(false);
     useEffect(() => {
         try {
-            const saved = localStorage.getItem('lumi_chat_state');
+            // Limpieza única: borra el borrador global viejo que compartían todos los usuarios
+            localStorage.removeItem('lumi_chat_state');
+            const saved = localStorage.getItem(LUMI_STATE_KEY);
             if (saved) {
                 const st = JSON.parse(saved);
                 // Solo restauramos si de verdad había una sesión de Lumi en curso
@@ -877,7 +881,7 @@ export const PlanningCLIL = ({ userData }) => {
                     primeParts, primeSessions, primeNumSessions,
                     savedAt: Date.now()
                 };
-                localStorage.setItem('lumi_chat_state', JSON.stringify(st));
+                localStorage.setItem(LUMI_STATE_KEY, JSON.stringify(st));
             }
         } catch (e) { console.warn('No se pudo guardar sesión Lumi:', e); }
     }, [lumiRestored, view, lumiStage, messages, selSubject, selGrade, selTerm,
@@ -1069,7 +1073,7 @@ export const PlanningCLIL = ({ userData }) => {
 
     const openLumi = () => {
         // Empezamos una sesión nueva: borramos cualquier sesión de Lumi guardada
-        localStorage.removeItem('lumi_chat_state');
+        localStorage.removeItem(LUMI_STATE_KEY);
         // Pre-cargamos el currículo YA (si no está), para que esté listo al confirmar contexto
         if (!curriculumMaps.length || !syllabusTemplates.length) fetchCurriculum();
         setView('lumi');
@@ -1569,7 +1573,7 @@ Teacher goal: ${pv.goal}`;
                 '¿Seguro que quieres salir sin guardar?'
             );
             if (!ok) return; // el profe se queda
-            localStorage.removeItem('lumi_chat_state');
+            localStorage.removeItem(LUMI_STATE_KEY);
             setGenSessions([]);
         }
         if (typeof accion === 'function') accion();
@@ -1637,7 +1641,7 @@ Teacher goal: ${pv.goal}`;
         localStorage.setItem('local_plannings', JSON.stringify([...newSessions, ...storedPlannings]));
 
         // 3.1 Ya se guardó de verdad: limpiar el borrador temporal de Lumi
-        localStorage.removeItem('lumi_chat_state');
+        localStorage.removeItem(LUMI_STATE_KEY);
 
         // 4. Feedback inmediato al chat y cambio de vista
         pushLumi('✅ ¡Guardado localmente! Sincronizando con Excel en segundo plano…', 100);
