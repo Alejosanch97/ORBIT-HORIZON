@@ -250,20 +250,26 @@ export const DataTableEditor = ({ userData }) => {
             showToast('JSON inválido, revisa el formato', 'error');
             return;
         }
+
+        // Detecta envoltorios comunes: { data: [...] }, { rows: [...] }, { records: [...] }
+        if (data && !Array.isArray(data) && typeof data === 'object') {
+            if (Array.isArray(data.data)) data = data.data;
+            else if (Array.isArray(data.rows)) data = data.rows;
+            else if (Array.isArray(data.records)) data = data.records;
+        }
+
         const arr = Array.isArray(data) ? data : [data];
         if (arr.length === 0) { showToast('El JSON está vacío', 'error'); return; }
 
         const lookup = buildColLookup();
         const mapped = arr.map(o => mapJsonRowToColumns(o, lookup));
 
-        // Filtrar por el rango de lotes seleccionado
         let finalRows = mapped;
         if (jsonBatchRange !== 'all') {
             const [start, end] = jsonBatchRange.split('-').map(Number);
             finalRows = mapped.slice(start, end);
         }
 
-        // Reemplaza las filas nuevas
         setNewRows(finalRows);
         setShowJsonModal(false);
         showToast(`${finalRows.length} fila(s) cargadas (${jsonBatchRange}). Revisa y presiona Guardar.`);
@@ -477,8 +483,8 @@ export const DataTableEditor = ({ userData }) => {
                             />
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
                                 <label style={{ fontWeight: '500' }}>Lote:</label>
-                                <select 
-                                    value={jsonBatchRange} 
+                                <select
+                                    value={jsonBatchRange}
                                     onChange={e => setJsonBatchRange(e.target.value)}
                                     style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid #ccc' }}
                                 >
