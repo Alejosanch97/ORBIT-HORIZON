@@ -3484,9 +3484,15 @@ Teacher goal: ${pv.goal}`;
                                                                     <span className="lm-section-title">Recurso</span>
                                                                     <div className="lm-resource-row">
                                                                         <div className="lm-links">
-                                                                            <a href={selected.Resource_Link} target="_blank" rel="noreferrer">
-                                                                                🔗 Abrir recurso
-                                                                            </a>
+                                                                            {selected.Resource_Link.split(',').map((link, idx) => {
+                                                                                const url = link.trim();
+                                                                                if (!url) return null;
+                                                                                return (
+                                                                                    <a key={idx} href={url} target="_blank" rel="noreferrer" style={{ marginRight: '10px' }}>
+                                                                                        🔗 Recurso {idx + 1}
+                                                                                    </a>
+                                                                                );
+                                                                            })}
                                                                         </div>
                                                                     </div>
                                                                 </>
