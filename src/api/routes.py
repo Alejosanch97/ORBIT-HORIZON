@@ -1035,6 +1035,36 @@ def delete_table_row(table_name, row_id):
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@api.route('/admin/table/<string:table_name>/<int:row_id>', methods=['PUT'])
+def update_table_row(table_name, row_id):
+    """Edita una fila existente por su id."""
+    model = TABLE_REGISTRY.get(table_name)
+    if not model:
+        return jsonify({"status": "error", "message": f"Tabla '{table_name}' no permitida"}), 400
+
+    body = request.get_json(silent=True)
+    if not body:
+        return jsonify({"status": "error", "message": "Faltan datos"}), 400
+
+    data = body.get('data', body)
+    editable = set(_editable_columns(model))
+
+    try:
+        obj = model.query.get(row_id)
+        if not obj:
+            return jsonify({"status": "error", "message": "Fila no encontrada"}), 404
+
+        # Solo actualiza columnas válidas (ignora id y colegio_id para no romper la fila)
+        for k, v in data.items():
+            if k in editable and k not in ('id', 'colegio_id'):
+                setattr(obj, k, v)
+
+        db.session.commit()
+        return jsonify({"status": "success", "data": obj.serialize()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 # ==========================================
 # SUPER ADMIN — EMPRESAS
 # ==========================================

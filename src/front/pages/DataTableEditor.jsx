@@ -19,6 +19,8 @@ export const DataTableEditor = ({ userData }) => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState(null);
+    const [editedRows, setEditedRows] = useState({}); // { rowId: {col: val} } filas existentes editadas
+    const [savingRow, setSavingRow] = useState(null);  // id de la fila que se está guardando
 
     // --- Import JSON ---
     const [showJsonModal, setShowJsonModal] = useState(false);
@@ -98,6 +100,49 @@ export const DataTableEditor = ({ userData }) => {
             copy[rowIdx] = { ...copy[rowIdx], [col]: value };
             return copy;
         });
+    };
+
+    // Editar una celda de una fila YA existente (se guarda por fila)
+    const updateExistingCell = (rowId, col, value) => {
+        setExistingRows(prev => prev.map(r =>
+            r.id === rowId ? { ...r, [col]: value } : r
+        ));
+        setEditedRows(prev => ({
+            ...prev,
+            [rowId]: { ...(prev[rowId] || {}), [col]: value }
+        }));
+    };
+
+    // Guarda los cambios de una fila existente en el backend (PUT)
+    const saveExistingRow = async (rowId) => {
+        const changes = editedRows[rowId];
+        if (!changes || Object.keys(changes).length === 0) {
+            showToast('No hay cambios en esta fila', 'error');
+            return;
+        }
+        setSavingRow(rowId);
+        try {
+            const resp = await fetch(`${API}/admin/table/${selectedTable}/${rowId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ data: changes })
+            });
+            const result = await resp.json();
+            if (result.status === 'success') {
+                showToast('Fila actualizada');
+                setEditedRows(prev => {
+                    const copy = { ...prev };
+                    delete copy[rowId];
+                    return copy;
+                });
+            } else {
+                showToast(result.message || 'Error al actualizar', 'error');
+            }
+        } catch (e) {
+            console.error(e);
+            showToast('Error de conexión', 'error');
+        }
+        setSavingRow(null);
     };
 
     // PEGADO MASIVO desde Excel: respeta tabs (columnas) y saltos de línea (filas)
@@ -403,18 +448,37 @@ export const DataTableEditor = ({ userData }) => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {/* Filas existentes (solo lectura) */}
-                                {existingRows.map((row, i) => (
-                                    <tr key={`ex-${row.id || i}`} className="dt-row-existing">
-                                        <td className="dt-rownum">{i + 1}</td>
-                                        {columns.map(col => (
-                                            <td key={col} title={row[col]}>
-                                                <div className="dt-cell-readonly">{row[col]}</div>
+                                {/* Filas existentes (editables, se guardan por fila) */}
+                                {existingRows.map((row, i) => {
+                                    const isDirty = !!editedRows[row.id];
+                                    return (
+                                        <tr key={`ex-${row.id || i}`} className={`dt-row-existing ${isDirty ? 'dt-row-dirty' : ''}`}>
+                                            <td className="dt-rownum">{i + 1}</td>
+                                            {columns.map(col => (
+                                                <td key={col} title={row[col]}>
+                                                    <input
+                                                        className="dt-cell-input"
+                                                        value={row[col] ?? ''}
+                                                        onChange={e => updateExistingCell(row.id, col, e.target.value)}
+                                                    />
+                                                </td>
+                                            ))}
+                                            <td className="dt-actions-col">
+                                                {isDirty && (
+                                                    <button
+                                                        className="dt-btn primary"
+                                                        style={{ padding: '4px 8px' }}
+                                                        onClick={() => saveExistingRow(row.id)}
+                                                        disabled={savingRow === row.id}
+                                                        title="Guardar cambios de esta fila"
+                                                    >
+                                                        <Save size={13} /> {savingRow === row.id ? '...' : 'Guardar'}
+                                                    </button>
+                                                )}
                                             </td>
-                                        ))}
-                                        <td className="dt-actions-col"></td>
-                                    </tr>
-                                ))}
+                                        </tr>
+                                    );
+                                })}
 
                                 {/* Separador visual */}
                                 <tr className="dt-divider-row">
