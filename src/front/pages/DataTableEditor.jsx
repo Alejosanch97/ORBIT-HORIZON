@@ -216,10 +216,36 @@ export const DataTableEditor = ({ userData }) => {
         return rows;
     };
 
+        // Detecta si lo pegado es un objeto/array JSON crudo (empieza con { o [
+    // y parsea correctamente). En ese caso NO se fragmenta: va entero a la celda.
+    const looksLikeJson = (text) => {
+        const t = String(text || '').trim();
+        if (!(t.startsWith('{') || t.startsWith('['))) return false;
+        try { JSON.parse(t); return true; } catch { return false; }
+    };
+
     // PEGADO MASIVO desde Excel: respeta celdas multilínea entre comillas
     const handlePaste = (e, startRowIdx, startColIdx) => {
         const text = e.clipboardData.getData('text/plain');
         if (!text) return;
+
+        // Si es un JSON completo, pégalo ENTERO en la celda actual (no lo partas en filas)
+        if (looksLikeJson(text)) {
+            e.preventDefault();
+            const targetCol = columns[startColIdx];
+            if (!targetCol) return;
+            // Lo compactamos a una línea para que quede limpio en la celda
+            let compact = text.trim();
+            try { compact = JSON.stringify(JSON.parse(text)); } catch { /* deja el texto tal cual */ }
+            setNewRows(prev => {
+                const copy = [...prev];
+                while (copy.length <= startRowIdx) copy.push(makeEmptyRow(columns));
+                copy[startRowIdx] = { ...copy[startRowIdx], [targetCol]: compact };
+                return copy;
+            });
+            return;
+        }
+
         // Si es una sola celda simple sin tabs ni saltos, deja el pegado normal del input
         if (!text.includes('\t') && !text.includes('\n') && !text.includes('"')) return;
 
