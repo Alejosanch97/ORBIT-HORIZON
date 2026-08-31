@@ -174,6 +174,13 @@ const ASSESSMENT_DIMENSIONS = ["Saber y Pensar (45%)", "Hacer e Innovar (45%)", 
 const EVALUATION_INSTRUMENTS = ["Exit Ticket (formativa)", "Rúbrica", "Checklist", "Quiz", "Observación directa", "Simulacro tipo SABER", "Proyecto Maker", "Sustentación oral"];
 
 const norm = (v) => String(v || "").trim().toUpperCase();
+
+/* Extrae el número más alto de un Session_Number, aceptando "3" o rangos "2-5" */
+const maxSessionNum = (raw) => {
+    const nums = String(raw || '').match(/\d+/g);
+    if (!nums) return 0;
+    return Math.max(...nums.map(Number));
+};
 /* Convierte "First Term" → 1, "3" → 3, etc. para casar con Term_Number de Neuro */
 const termToNumber = (t) => {
     const s = norm(t);
@@ -403,6 +410,20 @@ const extractFromSyllabus = (syllabusJson) => {
     if (j.inclusion_y_diversidad?.enfoque) out.inclusion = j.inclusion_y_diversidad.enfoque;
     out.focus = j.institucion?.enfoque_general || '';
     return out;
+};
+
+/* Parte los temas numerados del docente ("1. X 2. Y 3. Z") en un array ["X","Y","Z"].
+   Si no hay numeración, devuelve el texto completo como único elemento. */
+const splitNumberedTopics = (raw, expected) => {
+    const text = String(raw || '').trim();
+    if (!text) return Array.from({ length: expected }, () => '');
+    // Divide justo antes de cada "1." "2)" "3-" etc.
+    const parts = text.split(/(?=\d{1,2}\s*[.)\-]\s*)/g)
+        .map(s => s.replace(/^\d{1,2}\s*[.)\-]\s*/, '').trim())
+        .filter(Boolean);
+    if (parts.length >= 2) return parts;
+    // Sin numeración: un solo tema. Se repetirá el mismo si piden varias sesiones.
+    return [text];
 };
 
 /* Construye el prompt maestro que se envía a Gemini */
@@ -1458,61 +1479,99 @@ Teacher goal: ${pv.goal}`;
             : (currentPrompt.fields || []).map(f => `${f.label}: ${mergedValues[f.key]}`).join(' · ');
         pushUser(`${summary} · Sesiones: ${sessions} · Feedback: ${includeFeedback ? 'Sí' : 'No'}`);
 
-        setLumiStage('generating');
-        pushLumi('🧠 Estoy diseñando tus sesiones con base en tu currículo… dame unos segundos.', 400);
+                setLumiStage('generating');
 
         const syllabusJson = lumiCtx?.syllabus ? safeParse(lumiCtx.syllabus.Summary_JSON) : null;
-        const masterPrompt = buildMasterPrompt({
-            promptDef: currentPrompt,
-            values: mergedValues,
-            sessions,
-            subject: selSubject,
-            grade: selGrade,
-            term: selTerm,
-            mallaCtx: lumiCtx?.ctx,
-            syllabusJson,
-            methodology: METHODOLOGIES.find(m => m.id === selMethodology),
-            includeFeedback,
-        });
+        const methodologyObj = METHODOLOGIES.find(m => m.id === selMethodology);
 
+        // Partimos los temas numerados del docente: 1 tema = 1 sesión = 1 llamada
+        const topicField = (currentPrompt.fields || []).find(f => f.key === 'topic')?.key || 'topic';
+        const topics = splitNumberedTopics(mergedValues[topicField], sessions);
+
+        if (sessions === 1) {
+            pushLumi('🧠 Estoy diseñando tu sesión con base en tu currículo… dame unos segundos.', 400);
+        } else {
+            pushLumi(`🧠 Voy a diseñar tus ${sessions} sesiones una por una para máxima calidad. Empecemos…`, 400);
+        }
+
+        const collected = [];
         try {
-            const resp = await fetch(`${API}/generate-lumi`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: masterPrompt })
-            });
-            const data = await resp.json();
-            if (data.status !== 'success') {
-                pushLumi(`⚠️ Hubo un problema: ${data.message || 'error desconocido'}. Intenta de nuevo.`, 300);
+            for (let i = 0; i < sessions; i++) {
+                // Tema de esta sesión (si el profe puso menos temas que sesiones, reusa el último)
+                const thisTopic = topics[i] || topics[topics.length - 1] || mergedValues[topicField] || '';
+                const valuesForThis = { ...mergedValues, [topicField]: thisTopic };
+
+                if (sessions > 1) {
+                    pushLumi(`✏️ Diseñando la sesión ${i + 1} de ${sessions}: "${thisTopic.slice(0, 60)}"…`, 200);
+                }
+
+                // Cada llamada pide UNA sola sesión → cabe de sobra en el límite de tokens
+                const singlePrompt = buildMasterPrompt({
+                    promptDef: currentPrompt,
+                    values: valuesForThis,
+                    sessions: 1,
+                    subject: selSubject,
+                    grade: selGrade,
+                    term: selTerm,
+                    mallaCtx: lumiCtx?.ctx,
+                    syllabusJson,
+                    methodology: methodologyObj,
+                    includeFeedback,
+                });
+
+                const resp = await fetch(`${API}/generate-lumi`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: singlePrompt })
+                });
+                const data = await resp.json();
+
+                if (data.status !== 'success') {
+                    pushLumi(`⚠️ La sesión ${i + 1} falló: ${data.message || 'error'}. Sigo con las demás.`, 200);
+                    continue;
+                }
+
+                let arr = parseGeminiSessions(data.text || data.raw);
+                if (arr && !Array.isArray(arr)) {
+                    const arrKey = Object.keys(arr).find(k => Array.isArray(arr[k]));
+                    arr = arrKey ? arr[arrKey] : [arr];
+                }
+                const one = (arr && arr.length) ? arr[0] : null;
+                if (!one) {
+                    pushLumi(`⚠️ No pude leer la sesión ${i + 1}. Sigo con las demás.`, 200);
+                    continue;
+                }
+
+                one.Session_Number = String(collected.length + 1);
+                collected.push(normalizeGenSession(one, collected.length));
+            }
+
+            if (!collected.length) {
+                pushLumi('⚠️ No se pudo generar ninguna sesión. Intenta de nuevo o ajusta tu solicitud.', 300);
                 setLumiStage('fields');
                 return;
             }
-            let sessionsArr = parseGeminiSessions(data.text || data.raw);
-            // Groq con response_format devuelve un OBJETO en la raíz
-            if (sessionsArr && !Array.isArray(sessionsArr)) {
-                const arrKey = Object.keys(sessionsArr).find(k => Array.isArray(sessionsArr[k]));
-                sessionsArr = arrKey ? sessionsArr[arrKey] : [sessionsArr];
+
+            if (collected.length < sessions) {
+                pushLumi(`⚠️ Pediste ${sessions} sesiones y logré ${collected.length}. Se guardarán las generadas; puedes regenerar las faltantes.`, 300);
             }
-            if (!sessionsArr || !sessionsArr.length) {
-                pushLumi('⚠️ No pude leer la respuesta de la IA. Intenta de nuevo o ajusta tu solicitud.', 300);
-                setLumiStage('fields');
-                return;
-            }
-                        // normalizar: asegurar campos y numeración individual (nunca "1-3")
-            const normalized = sessionsArr.slice(0, sessions).map((s, i) => {
-                s.Session_Number = String(i + 1);
-                return normalizeGenSession(s, i);
-            });
-            if (normalized.length < sessions) {
-                pushLumi(`⚠️ Pediste ${sessions} sesiones pero la IA devolvió ${normalized.length}. Se guardarán las generadas; puedes regenerar para completar las faltantes.`, 300);
-            }
-            setGenSessions(normalized);
+
+            setGenSessions(collected);
             setAiCooldown(45);
-            pushLumi(`✨ ¡Listo! Diseñé ${normalized.length} sesión(es). Revísalas abajo, edita lo que quieras y guárdalas.`, 500);
+            pushLumi(`✨ ¡Listo! Diseñé ${collected.length} sesión(es), cada una completa. Revísalas abajo, edita lo que quieras y guárdalas.`, 500);
             setLumiStage('review');
         } catch (e) {
-            pushLumi('⚠️ Error de conexión al generar. Revisa tu red e intenta de nuevo.', 300);
-            setLumiStage('fields');
+            // Si ya alcanzamos a generar algunas, no las perdemos
+            if (collected.length) {
+                collected.forEach((s, i) => { s.Session_Number = String(i + 1); });
+                setGenSessions(collected);
+                setAiCooldown(45);
+                pushLumi(`⚠️ Se cortó la conexión, pero alcancé a diseñar ${collected.length} sesión(es). Revísalas abajo.`, 300);
+                setLumiStage('review');
+            } else {
+                pushLumi('⚠️ Error de conexión al generar. Revisa tu red e intenta de nuevo.', 300);
+                setLumiStage('fields');
+            }
         }
     };
 
@@ -1595,11 +1654,22 @@ Teacher goal: ${pv.goal}`;
         if (typeof accion === 'function') accion();
     };
 
-    const acceptAndSave = async () => {
+        const acceptAndSave = async () => {
         if (!genSessions.length) { console.warn('[GUARDAR] No hay sesiones para guardar.'); return; }
         if (isSyncing) return; // evita dobles clics
 
         const teacherKey = String(userData.Teacher_Key || userData.User_Key || "").trim();
+
+        // Calcula el consecutivo: busca el número de sesión más alto ya existente
+        // para esta misma secuencia (mismo grado + materia + periodo + docente).
+        const startFrom = plannings
+            .filter(p =>
+                norm(p.Grade) === norm(selGrade) &&
+                norm(p.Subject) === norm(selSubject) &&
+                norm(p.Term) === norm(selTerm) &&
+                String(p.Teacher || '').trim() === teacherKey
+            )
+            .reduce((max, p) => Math.max(max, maxSessionNum(p.Session_Number)), 0);
 
         // A) Mapeamos las nuevas sesiones listas para guardado local e inmediato
         const newSessions = genSessions.map((s, i) => {
@@ -1611,7 +1681,7 @@ Teacher goal: ${pv.goal}`;
                 Term: selTerm,
                 "Start Date": s["Start Date"] || "",
                 "Finish Date": s["Finish Date"] || "",
-                Session_Number: s.Session_Number || String(i + 1),
+                Session_Number: String(startFrom + i + 1),
                 Topic: s.Topic,
                 Objective: s.Objective,
                 "The Hook": s["The Hook"],
