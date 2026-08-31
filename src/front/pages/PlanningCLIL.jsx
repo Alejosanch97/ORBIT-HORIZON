@@ -161,11 +161,11 @@ const TERM_NUMBER = { "First Term": 1, "Second Term": 2, "Third Term": 3, "Fourt
 // Devuelve el periodo académico vigente según el mes actual.
 // Ajusta los rangos de meses a tu calendario escolar si cambian.
 const getCurrentTerm = () => {
-    const month = new Date().getMonth() + 1; // 1 = enero ... 12 = diciembre
-    if (month >= 1 && month <= 3) return "First Term";    // Ene–Mar
-    if (month >= 4 && month <= 6) return "Second Term";   // Abr–Jun
-    if (month >= 7 && month <= 9) return "Third Term";    // Jul–Sep
-    return "Fourth Term";                                  // Oct–Dic
+    const month = new Date().getMonth() + 1;
+    if (month >= 1 && month <= 3) return "First Term";
+    if (month >= 4 && month <= 6) return "Second Term";
+    if (month >= 7 && month <= 8) return "Third Term";
+    return "Fourth Term";   // Sep–Dic
 };
 
 const MAX_SESSIONS = 3;
@@ -493,6 +493,14 @@ ${inclusionList}
 === SOLICITUD DEL DOCENTE ===
 ${userRequest}
 
+=== ⛔ SEGMENTACIÓN OBLIGATORIA (${sessions} sesión/es) ===
+El docente escribió sus temas numerados (1., 2., 3.). CADA número es UNA sesión SEPARADA e independiente.
+- Debes generar EXACTAMENTE ${sessions} objeto(s) en el array, uno por cada número.
+- El objeto 1 usa SOLO el tema 1; el objeto 2 SOLO el tema 2; y así sucesivamente.
+- PROHIBIDO poner varios temas numerados dentro de un mismo "Topic". Cada "Topic" contiene UN solo tema, sin los números "1.", "2." al inicio.
+- "Session_Number" de cada objeto es su número individual ("1", "2", "3"), NUNCA un rango como "1-3".
+- Lo mismo aplica a Objective, The Hook, vocabulario y evidencia: cada objeto trata SOLO su tema.
+
 === REGLAS (LLENA TODOS los campos, ninguno vacío salvo los 2 indicados) ===
 0. "Topic": copia EXACTAMENTE el tema que el docente escribió en su solicitud. PROHIBIDO cambiarlo o sustituirlo por temas de la malla. "Objective": parte del objetivo del docente; solo mejora su redacción pedagógica sin cambiar el tema. TODO el contenido de la sesión (Hook, vocabulario, actividades, evidencia) debe girar en torno al tema del docente, NO a los temas de ejemplo de la malla.
 1. "The Hook" (Desarrollo, LO MÁS IMPORTANTE): estructura la clase en EXACTAMENTE 8 pasos institucionales, cada uno como "Paso N: [Título]: [contenido]". El contenido de cada paso debe tratar el TEMA DEL DOCENTE. Para CADA paso especifica de forma concreta y secuenciada: (a) qué HACE el docente, (b) qué HACEN los estudiantes, (c) el propósito pedagógico del paso, y (d) el tiempo aproximado en minutos. La metodología seleccionada (${methodology ? methodology.name : 'institucional'}) debe ORGANIZAR realmente cada paso, no solo mencionarse. Integra el Vocabulary Big 5 y el Language Frame dentro de los pasos donde se usan. Desarrolla la Thinking Routine dentro del paso que corresponda (no solo la nombres). Los 8 pasos deben tener progresión lógica: activación → exploración → construcción → práctica guiada → práctica independiente → cierre/reflexión. Solo usa la secuencia Concreto→Pictórico→Abstracto si la materia es matemática o científica.
@@ -519,7 +527,10 @@ Devuelve un array de EXACTAMENTE ${sessions} objeto(s), cada uno con estas clave
 {"Topic":"","Objective":"","The Hook":"","Vocabulary Big 5":"","Thinking Skill":"","Language Frame":"","Thinking Routine":"","Parent Task":"","Weekly Challenge":"","DBA_Reference":"","SDG_Connection":"","Assessment_Dimension":"","Evaluation_Instrument":"","Standard":"","Dimension":"","Principle":"","Value":"","Methodology":"","Inclusion_Adjustments":["","",""],"Learning_Evidence":{"product":"","phases":[{"moment":"","action":"","collect":"","criteria":""}]},"Session_Number":"","Feedback_Questions":${includeFeedback ? '[{"q":"","opts":["","","",""],"correct":0}]' : '[]'}}
 Learning_Evidence: product = producto tangible; phases = 3 momentos (inicio/desarrollo/cierre) con action, collect, criteria.
 ${includeFeedback ? 'Feedback_Questions: EXACTAMENTE 5 objetos, cada uno con q, opts (4 opciones cortas), correct (índice 0-3, varía la posición).' : 'Feedback_Questions: array VACÍO []. Prioriza profundidad en The Hook y Learning_Evidence.'}
-Genera exactamente ${sessions} objeto(s) en el array.`;
+Genera exactamente ${sessions} objeto(s) en el array.
+
+=== VERIFICACIÓN FINAL ANTES DE RESPONDER ===
+Cuenta tus objetos: DEBEN ser EXACTAMENTE ${sessions}. Si el docente numeró ${sessions} temas, hay ${sessions} objetos, uno por tema. Un array con menos de ${sessions} objetos, o con varios temas dentro de un mismo "Topic", es INVÁLIDO.`;
 };
 
 /* Prompt COMPACTO exclusivo para PR1ME Math (mínimos tokens de entrada) */
@@ -1487,9 +1498,14 @@ Teacher goal: ${pv.goal}`;
                 setLumiStage('fields');
                 return;
             }
-            // normalizar: asegurar campos y numeración
-            // normalizar: asegurar campos y numeración
-            const normalized = sessionsArr.slice(0, sessions).map((s, i) => normalizeGenSession(s, i));
+                        // normalizar: asegurar campos y numeración individual (nunca "1-3")
+            const normalized = sessionsArr.slice(0, sessions).map((s, i) => {
+                s.Session_Number = String(i + 1);
+                return normalizeGenSession(s, i);
+            });
+            if (normalized.length < sessions) {
+                pushLumi(`⚠️ Pediste ${sessions} sesiones pero la IA devolvió ${normalized.length}. Se guardarán las generadas; puedes regenerar para completar las faltantes.`, 300);
+            }
             setGenSessions(normalized);
             setAiCooldown(45);
             pushLumi(`✨ ¡Listo! Diseñé ${normalized.length} sesión(es). Revísalas abajo, edita lo que quieras y guárdalas.`, 500);
