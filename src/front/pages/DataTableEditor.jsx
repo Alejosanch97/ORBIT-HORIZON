@@ -216,12 +216,16 @@ export const DataTableEditor = ({ userData }) => {
         return rows;
     };
 
-        // Detecta si lo pegado es un objeto/array JSON crudo (empieza con { o [
-    // y parsea correctamente). En ese caso NO se fragmenta: va entero a la celda.
+        // Detecta si lo pegado es un objeto/array JSON crudo.
+    // NO exige que JSON.parse pase (comillas curvas, guiones largos, etc. no deben
+    // impedir que lo tratemos como una sola celda). Basta con que empiece con { o [
+    // y termine con } o ], y que tenga llaves balanceadas a grandes rasgos.
     const looksLikeJson = (text) => {
         const t = String(text || '').trim();
-        if (!(t.startsWith('{') || t.startsWith('['))) return false;
-        try { JSON.parse(t); return true; } catch { return false; }
+        if (!t) return false;
+        const startsOk = t.startsWith('{') || t.startsWith('[');
+        const endsOk = t.endsWith('}') || t.endsWith(']');
+        return startsOk && endsOk;
     };
 
     // PEGADO MASIVO desde Excel: respeta celdas multilínea entre comillas
@@ -229,14 +233,26 @@ export const DataTableEditor = ({ userData }) => {
         const text = e.clipboardData.getData('text/plain');
         if (!text) return;
 
-        // Si es un JSON completo, pégalo ENTERO en la celda actual (no lo partas en filas)
+                // Si es un JSON completo, pégalo ENTERO en la celda actual (no lo partas en filas)
         if (looksLikeJson(text)) {
             e.preventDefault();
+            e.stopPropagation();
             const targetCol = columns[startColIdx];
             if (!targetCol) return;
-            // Lo compactamos a una línea para que quede limpio en la celda
+
+            // Compactamos SIN romper: si JSON.parse funciona, perfecto;
+            // si no (comillas curvas, guiones largos), solo colapsamos los saltos
+            // de línea y espacios sobrantes, dejando las comillas intactas.
             let compact = text.trim();
-            try { compact = JSON.stringify(JSON.parse(text)); } catch { /* deja el texto tal cual */ }
+            try {
+                compact = JSON.stringify(JSON.parse(text));
+            } catch {
+                compact = text
+                    .replace(/\r?\n/g, ' ')   // quita saltos de línea
+                    .replace(/\s{2,}/g, ' ')  // colapsa espacios múltiples
+                    .trim();
+            }
+
             setNewRows(prev => {
                 const copy = [...prev];
                 while (copy.length <= startRowIdx) copy.push(makeEmptyRow(columns));
@@ -513,14 +529,15 @@ export const DataTableEditor = ({ userData }) => {
                                     </td>
                                 </tr>
 
-                                {/* Filas nuevas (editables) */}
+                                                                {/* Filas nuevas (editables) */}
                                 {newRows.map((row, rIdx) => (
                                     <tr key={`new-${rIdx}`} className="dt-row-new">
                                         <td className="dt-rownum">{existingRows.length + rIdx + 1}</td>
                                         {columns.map((col, cIdx) => (
                                             <td key={col}>
-                                                <input
+                                                <textarea
                                                     className="dt-cell-input"
+                                                    rows={1}
                                                     value={row[col] || ''}
                                                     onChange={e => updateCell(rIdx, col, e.target.value)}
                                                     onPaste={e => handlePaste(e, rIdx, cIdx)}
