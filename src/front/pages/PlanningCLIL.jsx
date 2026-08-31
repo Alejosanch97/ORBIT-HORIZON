@@ -844,8 +844,8 @@ export const PlanningCLIL = ({ userData }) => {
         } catch (e) { console.error("Error cargando revisiones:", e); }
     };
 
-        /* Trae la config de Lumi al store si aún no está, para que el avatar
-       coincida con el de Profile (misma fuente de datos). */
+    /* Trae la config de Lumi al store si aún no está, para que el avatar
+   coincida con el de Profile (misma fuente de datos). */
     const fetchLumiConfig = async () => {
         // Si el store ya tiene una config distinta al default, no re-fetcheamos
         if (store.lumiConfig && store.lumiConfig.seed && store.lumiConfig.seed !== 'Felix') return;
@@ -1836,9 +1836,26 @@ Teacher goal: ${pv.goal}`;
                     return recordKey === userKey;
                 });
 
+                                // Purga del respaldo local todo lo que el backend ya confirmó para este periodo:
+                // si ya está en el servidor, no debe seguir en local_plannings (evita fantasmas)
+                try {
+                    const backendIds = new Set(incoming.map(p => String(p.ID_Setup)));
+                    const stored = JSON.parse(localStorage.getItem('local_plannings') || '[]');
+                    const remaining = stored.filter(sp =>
+                        !backendIds.has(String(sp.ID_Setup)) &&
+                        String(sp.Term).trim() !== termToFetch // y descarta los locales viejos de este periodo
+                    );
+                    localStorage.setItem('local_plannings', JSON.stringify(remaining));
+                } catch (e) { console.warn('No se pudo reconciliar local_plannings:', e); }
+
                 let merged;
                 setPlannings(prev => {
-                    const sinEseTerm = prev.filter(p => String(p.Term).trim() !== termToFetch);
+                    // Quita del estado previo lo de este periodo Y cualquier duplicado que venga del backend
+                    const backendIds = new Set(incoming.map(p => String(p.ID_Setup)));
+                    const sinEseTerm = prev.filter(p =>
+                        String(p.Term).trim() !== termToFetch &&
+                        !backendIds.has(String(p.ID_Setup))
+                    );
                     merged = [...incoming, ...sinEseTerm];
                     return merged;
                 });
@@ -1862,15 +1879,31 @@ Teacher goal: ${pv.goal}`;
 
     const formatDate = (dateStr) => { if (!dateStr) return ""; return dateStr.split('T')[0]; };
 
+    // Quita una planeación del respaldo local_plannings para que no reaparezca al recargar
+    const removeFromLocalStorage = (idSetup) => {
+        try {
+            const stored = JSON.parse(localStorage.getItem('local_plannings') || '[]');
+            const remaining = stored.filter(p => p.ID_Setup !== idSetup);
+            localStorage.setItem('local_plannings', JSON.stringify(remaining));
+        } catch (e) { console.warn('No se pudo limpiar local_plannings:', e); }
+    };
+
     const handleDelete = async (plan) => {
         if (!window.confirm("¿Seguro que quieres eliminar esta planeación?")) return;
+
+        // En AMBOS casos, quítalo del respaldo local para que no revuelva al refrescar
+        removeFromLocalStorage(plan.ID_Setup);
+
         if (plan.isLocal) {
-            setPlannings(plannings.filter(p => p.ID_Setup !== plan.ID_Setup));
-            setSyncQueue(syncQueue.filter(q => q.ID_Setup !== plan.ID_Setup));
+            setPlannings(prev => prev.filter(p => p.ID_Setup !== plan.ID_Setup));
+            setSyncQueue(prev => prev.filter(q => q.ID_Setup !== plan.ID_Setup));
+            // Espeja el borrado al store global
+            dispatch({ type: 'remove_planning_global', payload: plan.ID_Setup });
         } else {
             setIsSyncing(true);
             // Optimista: quítalo de la vista de una vez
             setPlannings(prev => prev.filter(p => p.ID_Setup !== plan.ID_Setup));
+            dispatch({ type: 'remove_planning_global', payload: plan.ID_Setup });
             try {
                 await fetch(`${API}/lesson-planners/${plan.ID_Setup}`, { method: 'DELETE' });
             } catch (e) {
@@ -2064,6 +2097,18 @@ Teacher goal: ${pv.goal}`;
 
             // Marcar como guardado en el backend
             setPlannings(prev => prev.map(p => newIds.includes(p.ID_Setup) ? { ...p, isLocal: false } : p));
+
+            // Limpiar del respaldo local las que ya se guardaron (evita fantasmas al refrescar)
+            try {
+                const stored = JSON.parse(localStorage.getItem('local_plannings') || '[]');
+                const remaining = stored.filter(sp => !newIds.includes(sp.ID_Setup));
+                localStorage.setItem('local_plannings', JSON.stringify(remaining));
+            } catch (e) { console.warn('No se pudo limpiar local_plannings:', e); }
+
+            // Trae la verdad del backend para ver exactamente lo que quedó guardado
+            const termToRefresh = formattedEntries[0]?.Term;
+            loadedTerms.current.delete(termToRefresh); // fuerza re-fetch de ese periodo
+            await fetchData(termToRefresh);
         } catch (error) {
             console.error("Error sincronizando planeaciones manuales:", error);
         } finally {
