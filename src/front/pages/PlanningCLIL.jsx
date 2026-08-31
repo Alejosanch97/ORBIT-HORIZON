@@ -760,7 +760,10 @@ export const PlanningCLIL = ({ userData }) => {
     const userSubjects = userData.Assigned_Subject?.split(',').map(s => s.trim()) || [];
     const teacherFirstName = (userData.Teacher_Name || userData.User_Key || 'profe').split(' ')[0];
     const teacherKeyForAvatar = String(userData.Teacher_Key || userData.User_Key || '').trim();
-    const LUMI_AVATAR = buildAvatarUrl(getCachedLumiCfg(teacherKeyForAvatar), 120);
+    // Lee la config de Lumi del store global (la misma que usa LumiCard en Profile),
+    // así el avatar es idéntico en Profile y en Planning y respeta el fondo transparente.
+    const lumiCfgFromStore = store.lumiConfig || getCachedLumiCfg(teacherKeyForAvatar);
+    const LUMI_AVATAR = buildAvatarUrl(lumiCfgFromStore, 120);
     // Llave de borrador de Lumi ÚNICA por usuario (evita que un profe vea el chat de otro)
     const LUMI_STATE_KEY = `lumi_chat_state_${String(userData.User_Key || userData.Teacher_Key || 'anon').trim()}`;
 
@@ -776,6 +779,7 @@ export const PlanningCLIL = ({ userData }) => {
             fetchData();
             fetchCurriculum();
             fetchPlanReviews();
+            fetchLumiConfig(); // asegura que el avatar salga igual que en Profile
         }, 0);
         return () => clearTimeout(t);
     }, []);
@@ -838,6 +842,33 @@ export const PlanningCLIL = ({ userData }) => {
                 setPlanReviews(data.filter(r => String(r.ID_Lesson_Ref || '').startsWith('PLAN-')));
             }
         } catch (e) { console.error("Error cargando revisiones:", e); }
+    };
+
+        /* Trae la config de Lumi al store si aún no está, para que el avatar
+       coincida con el de Profile (misma fuente de datos). */
+    const fetchLumiConfig = async () => {
+        // Si el store ya tiene una config distinta al default, no re-fetcheamos
+        if (store.lumiConfig && store.lumiConfig.seed && store.lumiConfig.seed !== 'Felix') return;
+        if (!teacherKeyForAvatar) return;
+        try {
+            const resp = await fetch(`${API}/lumi-config?teacher_key=${encodeURIComponent(teacherKeyForAvatar)}`);
+            const data = await resp.json();
+            if (Array.isArray(data)) {
+                const mine = data.find(r => String(r.Teacher_Key || '').trim() === teacherKeyForAvatar);
+                if (mine) {
+                    let opts = {};
+                    try { opts = JSON.parse(mine.Avatar_Options_JSON || '{}'); } catch { opts = {}; }
+                    const loadedCfg = {
+                        seed: mine.Avatar_Seed || 'Felix',
+                        eyes: opts.eyes || 'default',
+                        mouth: opts.mouth || 'default',
+                        baseColor: opts.baseColor || '#ffedd5',
+                        backgroundColor: opts.backgroundColor || '',
+                    };
+                    dispatch({ type: 'set_lumi_config', payload: { config: loadedCfg, name: mine.Lumi_Name || 'Lumi' } });
+                }
+            }
+        } catch (e) { console.error('Error cargando config de Lumi en Planning:', e); }
     };
 
     /* Trae la neuroestimulación (una sola vez; ya cacheada en el store) */
@@ -1479,7 +1510,7 @@ Teacher goal: ${pv.goal}`;
             : (currentPrompt.fields || []).map(f => `${f.label}: ${mergedValues[f.key]}`).join(' · ');
         pushUser(`${summary} · Sesiones: ${sessions} · Feedback: ${includeFeedback ? 'Sí' : 'No'}`);
 
-                setLumiStage('generating');
+        setLumiStage('generating');
 
         const syllabusJson = lumiCtx?.syllabus ? safeParse(lumiCtx.syllabus.Summary_JSON) : null;
         const methodologyObj = METHODOLOGIES.find(m => m.id === selMethodology);
@@ -1654,7 +1685,7 @@ Teacher goal: ${pv.goal}`;
         if (typeof accion === 'function') accion();
     };
 
-        const acceptAndSave = async () => {
+    const acceptAndSave = async () => {
         if (!genSessions.length) { console.warn('[GUARDAR] No hay sesiones para guardar.'); return; }
         if (isSyncing) return; // evita dobles clics
 
