@@ -101,7 +101,7 @@ const CLIL_RESOURCES = {
         justifying: ["This is supported by...", "The evidence shows that...", "According to the data...", "This proves that...", "Based on the information...", "One reason for this is...", "This can be explained by...", "The results indicate that..."]
     },
     thinkingRoutines: [
-        "See-Think-Wonder", "Think-Puzzle-Explore", "3-2-1 Bridge", "Compass Points",
+        "See-Think-Wonder", "5 4 3 2 1 ", "Pulpo", "Think-Puzzle-Explore", "3-2-1 Bridge", "Compass Points",
         "Claim-Support-Question", "Generate-Sort-Connect-Elaborate", "Color-Symbol-Image",
         "Headlines", "I Used to Think… Now I Think…", "What Makes You Say That?"
     ]
@@ -1836,7 +1836,7 @@ Teacher goal: ${pv.goal}`;
                     return recordKey === userKey;
                 });
 
-                                // Purga del respaldo local todo lo que el backend ya confirmó para este periodo:
+                // Purga del respaldo local todo lo que el backend ya confirmó para este periodo:
                 // si ya está en el servidor, no debe seguir en local_plannings (evita fantasmas)
                 try {
                     const backendIds = new Set(incoming.map(p => String(p.ID_Setup)));
@@ -2701,7 +2701,6 @@ Teacher goal: ${pv.goal}`;
                                                 principle: ["Cuidado", "Responsabilidad", "Excelencia", "Amor por el aprendizaje", "Relaciones sanas y armoniosas"],
                                                 assessment: ASSESSMENT_DIMENSIONS,
                                                 instrument: EVALUATION_INSTRUMENTS,
-                                                routine: CLIL_RESOURCES.thinkingRoutines,
                                             };
                                             const isSelect = OPTS[kind];
                                             // Para Language Frame: convertir el string "a / b / c" en array de chips
@@ -2764,6 +2763,19 @@ Teacher goal: ${pv.goal}`;
                                                                 ))}
                                                             </div>
                                                         </div>
+                                                                                                        ) : kind === "routine" ? (
+                                                        <>
+                                                            <input
+                                                                list={`routine-list-${idx}`}
+                                                                type="text"
+                                                                placeholder="Elige una rutina o escribe una nueva…"
+                                                                value={s[field] || ''}
+                                                                onChange={e => updateGenSession(idx, field, e.target.value)}
+                                                            />
+                                                            <datalist id={`routine-list-${idx}`}>
+                                                                {CLIL_RESOURCES.thinkingRoutines.map(r => <option key={r} value={r} />)}
+                                                            </datalist>
+                                                        </>
                                                     ) : kind === "textarea" ? (
                                                         <textarea value={s[field] || ''} onChange={e => updateGenSession(idx, field, e.target.value)} />
                                                     ) : isSelect ? (
@@ -3115,12 +3127,17 @@ Teacher goal: ${pv.goal}`;
                                             </div>
 
                                             <div className="grid-3">
-                                                <div className="input-group"><label>Thinking Routine</label>
-                                                    <select value={fd["Thinking Routine"] || ""} onChange={(e) => handleInputChange(grade, "Thinking Routine", e.target.value)}>
-                                                        <option value="">Select Routine...</option>
-                                                        {fd["Thinking Routine"] && !CLIL_RESOURCES.thinkingRoutines.includes(fd["Thinking Routine"]) && <option value={fd["Thinking Routine"]}>{fd["Thinking Routine"]}</option>}
-                                                        {CLIL_RESOURCES.thinkingRoutines.map(r => <option key={r}>{r}</option>)}
-                                                    </select>
+                                                                                                <div className="input-group"><label>Thinking Routine</label>
+                                                    <input
+                                                        list={`routine-manual-${grade}`}
+                                                        type="text"
+                                                        placeholder="Elige una rutina o escribe una nueva…"
+                                                        value={fd["Thinking Routine"] || ""}
+                                                        onChange={(e) => handleInputChange(grade, "Thinking Routine", e.target.value)}
+                                                    />
+                                                    <datalist id={`routine-manual-${grade}`}>
+                                                        {CLIL_RESOURCES.thinkingRoutines.map(r => <option key={r} value={r} />)}
+                                                    </datalist>
                                                 </div>
                                                 <div className="input-group"><label>Vocabulary Big 5</label><input type="text" value={fd["Vocabulary Big 5"] || ""} placeholder="Word1, Word2..." onChange={(e) => handleInputChange(grade, "Vocabulary Big 5", e.target.value)} /></div>
                                                 <div className="input-group"><label>Resources</label><input type="text" value={fd["Richmond Resources"] || ""} placeholder="Richmond / Digital" onChange={(e) => handleInputChange(grade, "Richmond Resources", e.target.value)} /></div>
