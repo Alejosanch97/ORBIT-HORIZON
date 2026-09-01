@@ -1,3 +1,13 @@
+// Config por defecto de Lumi (definida aquí para no depender de un import
+// que rompía el build en Vercel por mayúsculas/ruta del archivo)
+const DEFAULT_CFG = {
+  seed: "Felix",
+  eyes: "default",
+  mouth: "default",
+  baseColor: "#ffedd5",
+  backgroundColor: "",
+};
+
 export const initialStore = () => {
   return {
     message: null,
