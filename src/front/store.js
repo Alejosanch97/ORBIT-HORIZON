@@ -1,5 +1,3 @@
-import { DEFAULT_CFG } from "../components/lumiAvatar"; // ajusta la ruta si difiere
-
 export const initialStore = () => {
   return {
     message: null,
