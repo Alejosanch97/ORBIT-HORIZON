@@ -3126,18 +3126,22 @@ Teacher goal: ${pv.goal}`;
                                                 })()}
                                             </div>
 
-                                            <div className="grid-3">
-                                                <div className="input-group"><label>Thinking Routine ✅NUEVO</label>
+                                                                                        <div className="grid-3">
+                                                <div className="input-group"><label>Thinking Routine</label>
                                                     <input
                                                         list={`routine-manual-${grade}`}
                                                         type="text"
-                                                        placeholder="Elige una rutina o escribe una nueva…"
+                                                        placeholder="Elige de la lista o escribe una nueva…"
                                                         value={fd["Thinking Routine"] || ""}
                                                         onChange={(e) => handleInputChange(grade, "Thinking Routine", e.target.value)}
+                                                        onFocus={(e) => e.target.select()}
                                                     />
                                                     <datalist id={`routine-manual-${grade}`}>
                                                         {CLIL_RESOURCES.thinkingRoutines.map(r => <option key={r} value={r} />)}
                                                     </datalist>
+                                                    <small style={{ display: 'block', marginTop: '4px', color: '#5a6782', fontSize: '0.72rem' }}>
+                                                        Haz clic para ver la lista o escribe una rutina propia.
+                                                    </small>
                                                 </div>
                                                 <div className="input-group"><label>Vocabulary Big 5</label><input type="text" value={fd["Vocabulary Big 5"] || ""} placeholder="Word1, Word2..." onChange={(e) => handleInputChange(grade, "Vocabulary Big 5", e.target.value)} /></div>
                                                 <div className="input-group"><label>Resources</label><input type="text" value={fd["Richmond Resources"] || ""} placeholder="Richmond / Digital" onChange={(e) => handleInputChange(grade, "Richmond Resources", e.target.value)} /></div>
