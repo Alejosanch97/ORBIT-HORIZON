@@ -2763,7 +2763,7 @@ Teacher goal: ${pv.goal}`;
                                                                 ))}
                                                             </div>
                                                         </div>
-                                                                                                        ) : kind === "routine" ? (
+                                                    ) : kind === "routine" ? (
                                                         <>
                                                             <input
                                                                 list={`routine-list-${idx}`}
@@ -3127,7 +3127,7 @@ Teacher goal: ${pv.goal}`;
                                             </div>
 
                                             <div className="grid-3">
-                                                                                                <div className="input-group"><label>Thinking Routine</label>
+                                                <div className="input-group"><label>Thinking Routine ✅NUEVO</label>
                                                     <input
                                                         list={`routine-manual-${grade}`}
                                                         type="text"
