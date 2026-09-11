@@ -1287,6 +1287,8 @@ export const PlanningCLIL = ({ userData }) => {
         Inclusion_Adjustments: Array.isArray(s.Inclusion_Adjustments) ? s.Inclusion_Adjustments : [],
         Learning_Evidence: s.Learning_Evidence || null,
         Session_Number: s.Session_Number || String(i + 1),
+        ID_Setup: s.ID_Setup || '',
+        isLocal: s.isLocal,
         Feedback_Questions: Array.isArray(s.Feedback_Questions)
             ? s.Feedback_Questions.filter(q => q && (typeof q === 'string' ? q.trim() : q.q))
             : [],
@@ -1704,15 +1706,20 @@ Teacher goal: ${pv.goal}`;
 
         // A) Mapeamos las nuevas sesiones listas para guardado local e inmediato
         const newSessions = genSessions.map((s, i) => {
-            const idSetup = `AI-${Date.now()}-${i}`;
+            // Si la sesión ya tiene ID_Setup (viene de una edición), lo reutilizamos.
+            // Solo generamos uno nuevo cuando es una sesión realmente nueva.
+            const idSetup = s.ID_Setup || `AI-${Date.now()}-${i}`;
+            const esEdicion = Boolean(s.ID_Setup) && !s.isLocal;
             return {
+                _isEdit: esEdicion,
                 ID_Setup: idSetup,
                 Grade: selGrade,
                 Subject: selSubject,
                 Term: selTerm,
                 "Start Date": s["Start Date"] || "",
                 "Finish Date": s["Finish Date"] || "",
-                Session_Number: String(startFrom + i + 1),
+                // Si es edición conserva su número; si es nueva calcula el consecutivo
+                Session_Number: s.Session_Number ? String(s.Session_Number) : String(startFrom + i + 1),
                 Topic: s.Topic,
                 Objective: s.Objective,
                 "The Hook": s["The Hook"],
@@ -1767,9 +1774,15 @@ Teacher goal: ${pv.goal}`;
         // C) SINCRONIZACIÓN EN SEGUNDO PLANO (Push to Excel Asíncrono)
         try {
             for (const data of newSessions) {
-                const { isLocal, ...dataToSend } = data;
-                await fetch(`${API}/lesson-planners`, {
-                    method: 'POST',
+                const { isLocal, _isEdit, ...dataToSend } = data;
+                // Si la sesión venía de una edición existente en el backend → PUT (sobrescribe).
+                // Si es nueva → POST (crea).
+                const url = _isEdit
+                    ? `${API}/lesson-planners/${encodeURIComponent(dataToSend.ID_Setup)}`
+                    : `${API}/lesson-planners`;
+                const method = _isEdit ? 'PUT' : 'POST';
+                await fetch(url, {
+                    method,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ data: dataToSend })
                 });
@@ -3126,7 +3139,7 @@ Teacher goal: ${pv.goal}`;
                                                 })()}
                                             </div>
 
-                                                                                        <div className="grid-3">
+                                            <div className="grid-3">
                                                 <div className="input-group"><label>Thinking Routine</label>
                                                     <input
                                                         list={`routine-manual-${grade}`}

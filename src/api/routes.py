@@ -689,9 +689,17 @@ def create_lesson_planner():
         return jsonify({"status": "error", "message": "Faltan datos en el body"}), 400
     data = body.get('data', body)
     try:
+        id_setup = data.get('ID_Setup') or gen_id('AI')
+        # Upsert por ID_Setup: si ya existe esa planeación, la actualizamos
+        # en lugar de crear una nueva (evita duplicados al editar).
+        plan = LessonPlanners.query.filter_by(ID_Setup=id_setup).first()
+        if plan:
+            _apply_planner_fields(plan, data)
+            db.session.commit()
+            return jsonify({"status": "success", "data": plan.serialize()}), 200
         plan = LessonPlanners(
             colegio_id=get_colegio_id(data),
-            ID_Setup=data.get('ID_Setup') or gen_id('AI')
+            ID_Setup=id_setup
         )
         _apply_planner_fields(plan, data)
         db.session.add(plan)
