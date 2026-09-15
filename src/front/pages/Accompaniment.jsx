@@ -287,11 +287,11 @@ const StudentPanel = ({ student, isAdmin, onClose, onAddAssignment, onAddObserva
                 {/* Datos de diagnóstico (solo lectura) */}
                 <div className="acc-diag">
                     <div className="acc-diag-item">
-                        <span>Diagnóstico de ingreso</span>
+                        <span>{norm(student.Subject) === 'ENGLISH' || !norm(student.Subject) ? 'Diagnóstico de ingreso' : 'Observación inicial'}</span>
                         <p>{student.Diagnostic_Result || 'Sin registrar'}</p>
                     </div>
                     <div className="acc-diag-item">
-                        <span>Entry Test Richmond</span>
+                        <span>{norm(student.Subject) === 'ENGLISH' || !norm(student.Subject) ? 'Entry Test Richmond' : 'Nivel de ingreso'}</span>
                         <p>{student.Entry_Test_Richmond || 'Sin registrar'}</p>
                     </div>
                 </div>
@@ -395,6 +395,20 @@ const NewStudentModal = ({ grades, subjects = [], teacherKey, isAdmin, onClose, 
     // Materias que puede elegir: si es profe con varias, esas; si admin, catálogo libre
     const ADMIN_SUBJECTS = ['ENGLISH', 'SPANISH', 'MATH', 'SCIENCE', 'BIOLOGY', 'SOCIAL STUDIES', 'ART', 'PE'];
     const subjectOptions = isAdmin ? ADMIN_SUBJECTS : subjects;
+    const isEnglish = (sub) => norm(sub) === 'ENGLISH' || !norm(sub);
+    const labels = (sub) => isEnglish(sub)
+        ? {
+            richmond: 'Entry Test Richmond',
+            richmondPh: '',
+            diagnostic: 'Resultado diagnóstico de ingreso',
+            diagnosticPh: ''
+        }
+        : {
+            richmond: 'Nivel de ingreso',
+            richmondPh: 'Ej: Básico, Medio…',
+            diagnostic: 'Observación inicial',
+            diagnosticPh: 'Ej: Flojo en operaciones básicas'
+        };
     const [form, setForm] = useState({
         Student_Name: '', Grade: grades[0] || '',
         Subject: subjectOptions[0] || 'ENGLISH',
@@ -474,13 +488,23 @@ const NewStudentModal = ({ grades, subjects = [], teacherKey, isAdmin, onClose, 
                             <input type="date" value={form.Entry_Date} onChange={e => setForm(f => ({ ...f, Entry_Date: e.target.value }))} />
                         </div>
                         <div className="acc-field">
-                            <label>Entry Test Richmond</label>
-                            <input value={form.Entry_Test_Richmond} onChange={e => setForm(f => ({ ...f, Entry_Test_Richmond: e.target.value }))} />
+                            <label>{labels(form.Subject).richmond}</label>
+                            <input
+                                maxLength={100}
+                                placeholder={labels(form.Subject).richmondPh}
+                                value={form.Entry_Test_Richmond}
+                                onChange={e => setForm(f => ({ ...f, Entry_Test_Richmond: e.target.value }))}
+                            />
                         </div>
                     </div>
                     <div className="acc-field">
-                        <label>Resultado diagnóstico de ingreso</label>
-                        <input value={form.Diagnostic_Result} onChange={e => setForm(f => ({ ...f, Diagnostic_Result: e.target.value }))} />
+                        <label>{labels(form.Subject).diagnostic}</label>
+                        <input
+                            maxLength={100}
+                            placeholder={labels(form.Subject).diagnosticPh}
+                            value={form.Diagnostic_Result}
+                            onChange={e => setForm(f => ({ ...f, Diagnostic_Result: e.target.value }))}
+                        />
                     </div>
                 </div>
                 <div className="acc-modal-foot">
