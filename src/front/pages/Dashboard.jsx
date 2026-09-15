@@ -263,14 +263,23 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
     }, [store.activities, teacherName]);
 
     const vocabularyData = useMemo(() => {
-        const myKeys = [teacherKey, teacherName]
+        // Todas las formas en que este usuario puede aparecer como "Teacher"
+        const myKeys = [
+            userData?.User_Key,
+            userData?.Teacher_Key,
+            userData?.Teacher_Name,
+            userData?.name,
+            teacherKey,
+            teacherName
+        ]
             .map(k => String(k || "").trim().toUpperCase())
             .filter(Boolean);
+
         return (lessonPlanners || []).filter(p => {
             const pt = String(p.Teacher || "").trim().toUpperCase();
             return myKeys.includes(pt);
         });
-    }, [lessonPlanners, teacherKey, teacherName]);
+    }, [lessonPlanners, userData, teacherKey, teacherName]);
 
     const simpleVocabList = useMemo(() => {
         const allWords = vocabularyData
