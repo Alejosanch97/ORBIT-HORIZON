@@ -242,6 +242,7 @@ class StudentsAlert(db.Model):
     ID_Student: Mapped[str] = mapped_column(String(100), nullable=False)
     Student_Name: Mapped[str] = mapped_column(String(255), nullable=False)
     Grade: Mapped[str] = mapped_column(String(100), nullable=True)
+    Subject: Mapped[str] = mapped_column(String(100), nullable=True)
     Entry_Date: Mapped[str] = mapped_column(String(50), nullable=True)
     Expected_MCER: Mapped[str] = mapped_column(String(50), nullable=True)
     Diagnostic_Result: Mapped[str] = mapped_column(String(100), nullable=True)
@@ -267,6 +268,7 @@ class StudentsAlert(db.Model):
             "ID_Student": self.ID_Student,
             "Student_Name": self.Student_Name,
             "Grade": self.Grade,
+            "Subject": self.Subject or "ENGLISH",
             "Entry_Date": self.Entry_Date,
             "Expected_MCER": self.Expected_MCER,
             "Diagnostic_Result": self.Diagnostic_Result,

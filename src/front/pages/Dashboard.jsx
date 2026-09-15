@@ -113,8 +113,7 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
 
     const isAdminUser = String(userData?.ROL || '').trim().toLowerCase() === 'admin';
     const isSuperAdmin = String(userData?.ROL || '').trim().toLowerCase() === 'super admin';
-    const teachesEnglish = String(userData?.Assigned_Subject || '').toUpperCase().includes('ENGLISH');
-    const seesAccompaniment = isAdminUser || teachesEnglish;
+    const seesAccompaniment = true; // Acompañamiento disponible para todos los docentes
 
     const navigate = useNavigate();
 

@@ -23,12 +23,20 @@ export const Accompaniment = ({ userData }) => {
     const teacherKey = String(userData.User_Key || userData.Teacher_Key || '').trim();
     const teacherName = String(userData.Teacher_Name || userData.User_Key || '').trim();
 
+    // Materias que dicta este usuario (vacío = ENGLISH por retrocompatibilidad)
+    const mySubjects = (userData.Assigned_Subject || '')
+        .split(',').map(s => norm(s)).filter(Boolean);
+    const effectiveSubjects = mySubjects.length ? mySubjects : ['ENGLISH'];
+
     // Grados que este usuario puede ver
     const visibleGrades = isAdmin ? ALL_GRADES : myGrades.filter(g => ALL_GRADES.includes(norm(g)) || ALL_GRADES.includes(g));
+    // Materias que este usuario puede ver / usar
+    const visibleSubjects = isAdmin ? [] : effectiveSubjects; // admin ve todas
 
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
     const [filterGrade, setFilterGrade] = useState('');
+    const [filterSubject, setFilterSubject] = useState('');
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState(null); // estudiante abierto en el panel
     const [showNew, setShowNew] = useState(false);
@@ -56,15 +64,21 @@ export const Accompaniment = ({ userData }) => {
 
     const filtered = useMemo(() => {
         const list = store.students || [];
+        const subjOf = (s) => norm(s.Subject) || 'ENGLISH'; // registros viejos = ENGLISH
         return list.filter(s =>
             String(s.Active).toUpperCase() !== 'FALSE' &&
+            // Grado: admin todo; profe solo sus grados
             (isAdmin || visibleGrades.some(g => norm(g) === norm(s.Grade))) &&
+            // Materia: admin todo; profe solo las materias que dicta
+            (isAdmin || effectiveSubjects.includes(subjOf(s))) &&
+            // Filtros manuales
             (!filterGrade || norm(s.Grade) === norm(filterGrade)) &&
+            (!filterSubject || subjOf(s) === norm(filterSubject)) &&
             (!search || norm(s.Student_Name).includes(norm(search)))
         );
-    }, [store.students, filterGrade, search, isAdmin, visibleGrades]);
+    }, [store.students, filterGrade, filterSubject, search, isAdmin, visibleGrades, effectiveSubjects]);
 
-   /* ------- Actualiza un estudiante en el Store global ------- */
+    /* ------- Actualiza un estudiante en el Store global ------- */
     const patchStudent = (id, patch) => {
         dispatch({ type: 'update_student_global', payload: { ID_Student: id, patch } });
         setSelected(prev => prev && prev.ID_Student === id ? { ...prev, ...patch } : prev);
@@ -78,10 +92,10 @@ export const Accompaniment = ({ userData }) => {
         const updated = JSON.stringify([...arr, nuevo]);
         patchStudent(student.ID_Student, { Assignments: updated });
         try {
-            await fetch(`${API_URL}/students-alert/${student.ID_Student}/assignment`, { 
-                method: 'POST', 
+            await fetch(`${API_URL}/students-alert/${student.ID_Student}/assignment`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text.trim() }) 
+                body: JSON.stringify({ text: text.trim() })
             });
         } catch (e) { showToast('No se pudo guardar la asignación', 'error'); }
     };
@@ -93,10 +107,10 @@ export const Accompaniment = ({ userData }) => {
         const updated = JSON.stringify([...arr, nuevo]);
         patchStudent(student.ID_Student, { Observations: updated });
         try {
-            await fetch(`${API_URL}/students-alert/${student.ID_Student}/observation`, { 
-                method: 'POST', 
+            await fetch(`${API_URL}/students-alert/${student.ID_Student}/observation`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text.trim(), author: teacherName }) 
+                body: JSON.stringify({ text: text.trim(), author: teacherName })
             });
         } catch (e) { showToast('No se pudo guardar la observación', 'error'); }
     };
@@ -104,10 +118,10 @@ export const Accompaniment = ({ userData }) => {
     const setVerdict = async (student, verdict) => {
         patchStudent(student.ID_Student, { Verdict: verdict });
         try {
-            await fetch(`${API_URL}/students-alert/${student.ID_Student}/verdict`, { 
-                method: 'PUT', 
+            await fetch(`${API_URL}/students-alert/${student.ID_Student}/verdict`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ verdict }) 
+                body: JSON.stringify({ verdict })
             });
             if (verdict === 'Reprobó') showToast('Marcado como Reprobó — alerta enviada a coordinación', 'success');
         } catch (e) { showToast('No se pudo guardar el veredicto', 'error'); }
@@ -118,10 +132,10 @@ export const Accompaniment = ({ userData }) => {
         dispatch({ type: 'remove_student_global', payload: student.ID_Student });
         setSelected(null);
         try {
-            await fetch(`${API_URL}/students-alert/${student.ID_Student}/active`, { 
-                method: 'PUT', 
+            await fetch(`${API_URL}/students-alert/${student.ID_Student}/active`, {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ active: false }) 
+                body: JSON.stringify({ active: false })
             });
             showToast(`${student.Student_Name} salió de la lista de nivelación`);
         } catch (e) {
@@ -158,6 +172,19 @@ export const Accompaniment = ({ userData }) => {
                     <option value="">Todos los grados</option>
                     {visibleGrades.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
+                {(isAdmin || effectiveSubjects.length > 1) && (
+                    <select
+                        value={filterSubject}
+                        onChange={e => setFilterSubject(e.target.value)}
+                        autoComplete="off"
+                    >
+                        <option value="">Todas las materias</option>
+                        {(isAdmin
+                            ? [...new Set((store.students || []).map(s => norm(s.Subject) || 'ENGLISH'))]
+                            : effectiveSubjects
+                        ).map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                    </select>
+                )}
                 <span className="acc-count"><strong>{filtered.length}</strong> {filtered.length === 1 ? 'estudiante' : 'estudiantes'}</span>
             </div>
 
@@ -181,6 +208,7 @@ export const Accompaniment = ({ userData }) => {
                             <article key={s.ID_Student} className="acc-card" onClick={() => setSelected(s)}>
                                 <div className="acc-card-top">
                                     <span className="acc-grade-tag">{s.Grade}</span>
+                                    <span className="acc-subject-tag">{norm(s.Subject) || 'ENGLISH'}</span>
                                     <span className={`acc-verdict ${verdictClass}`}>{s.Verdict || 'Pendiente'}</span>
                                 </div>
                                 <h3 className="acc-name">{s.Student_Name}</h3>
@@ -214,13 +242,14 @@ export const Accompaniment = ({ userData }) => {
             {showNew && (
                 <NewStudentModal
                     grades={visibleGrades}
-                    teacherKey={teacherKey}
+                    subjects={isAdmin ? [] : effectiveSubjects}
                     isAdmin={isAdmin}
+                    teacherKey={teacherKey}
                     onClose={() => setShowNew(false)}
-                    onCreated={(student) => { 
-                        dispatch({ type: 'add_student_global', payload: student }); 
-                        setShowNew(false); 
-                        showToast('Estudiante agregado'); 
+                    onCreated={(student) => {
+                        dispatch({ type: 'add_student_global', payload: student });
+                        setShowNew(false);
+                        showToast('Estudiante agregado');
                     }}
                 />
             )}
@@ -362,9 +391,14 @@ const StudentPanel = ({ student, isAdmin, onClose, onAddAssignment, onAddObserva
 /* ============================================================
    MODAL NUEVO ESTUDIANTE
    ============================================================ */
-const NewStudentModal = ({ grades, teacherKey, isAdmin, onClose, onCreated }) => {
+const NewStudentModal = ({ grades, subjects = [], teacherKey, isAdmin, onClose, onCreated }) => {
+    // Materias que puede elegir: si es profe con varias, esas; si admin, catálogo libre
+    const ADMIN_SUBJECTS = ['ENGLISH', 'SPANISH', 'MATH', 'SCIENCE', 'BIOLOGY', 'SOCIAL STUDIES', 'ART', 'PE'];
+    const subjectOptions = isAdmin ? ADMIN_SUBJECTS : subjects;
     const [form, setForm] = useState({
-        Student_Name: '', Grade: grades[0] || '', Entry_Date: '', Expected_MCER: '',
+        Student_Name: '', Grade: grades[0] || '',
+        Subject: subjectOptions[0] || 'ENGLISH',
+        Entry_Date: '', Expected_MCER: '',
         Diagnostic_Result: '', Entry_Test_Richmond: ''
     });
     const [saving, setSaving] = useState(false);
@@ -376,22 +410,23 @@ const NewStudentModal = ({ grades, teacherKey, isAdmin, onClose, onCreated }) =>
         const student = {
             ID_Student: id,
             ...form,
-            Assignments: [], 
-            Observations: [], 
+            Subject: form.Subject || 'ENGLISH',
+            Assignments: [],
+            Observations: [],
             Verdict: '',
-            Term: CURRENT_TERM, 
+            Term: CURRENT_TERM,
             Teacher_Key: teacherKey,
             Created_By: isAdmin ? 'admin' : 'teacher',
-            Last_Updated: new Date().toISOString(), 
+            Last_Updated: new Date().toISOString(),
             Active: 'TRUE'
         };
         // Optimista
         onCreated(student);
         try {
-            await fetch(`${API_URL}/students-alert`, { 
-                method: 'POST', 
+            await fetch(`${API_URL}/students-alert`, {
+                method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ data: student }) 
+                body: JSON.stringify({ data: student })
             });
         } catch (e) { console.error(e); }
         setSaving(false);
@@ -416,6 +451,18 @@ const NewStudentModal = ({ grades, teacherKey, isAdmin, onClose, onCreated }) =>
                                 {grades.map(g => <option key={g} value={g}>{g}</option>)}
                             </select>
                         </div>
+                        <div className="acc-field">
+                            <label>Materia</label>
+                            {subjectOptions.length > 1 || isAdmin ? (
+                                <select value={form.Subject} onChange={e => setForm(f => ({ ...f, Subject: e.target.value }))}>
+                                    {subjectOptions.map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                                </select>
+                            ) : (
+                                <input value={form.Subject} readOnly />
+                            )}
+                        </div>
+                    </div>
+                    <div className="acc-field-row">
                         <div className="acc-field">
                             <label>Nivel MCER esperado</label>
                             <input placeholder="Ej: A2" value={form.Expected_MCER} onChange={e => setForm(f => ({ ...f, Expected_MCER: e.target.value }))} />

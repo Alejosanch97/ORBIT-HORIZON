@@ -14,6 +14,17 @@
     color: var(--ac-ink);
 }
 
+.acc-subject-tag {
+    font-size: 0.62rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: #4338ca;
+}
+
 /* Cabecera */
 .acc-head {
     display: flex; justify-content: space-between; align-items: flex-end;

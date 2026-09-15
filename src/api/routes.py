@@ -101,6 +101,7 @@ def create_student_alert():
             ID_Student=data.get('ID_Student') or gen_id('STU'),
             Student_Name=data.get('Student_Name'),
             Grade=data.get('Grade'),
+            Subject=(data.get('Subject') or 'ENGLISH'),
             Entry_Date=data.get('Entry_Date'),
             Expected_MCER=data.get('Expected_MCER'),
             Diagnostic_Result=data.get('Diagnostic_Result'),
