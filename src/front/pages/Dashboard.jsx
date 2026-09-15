@@ -276,13 +276,6 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
             .map(k => String(k || "").trim().toUpperCase())
             .filter(Boolean);
 
-        // 🔍 DEBUG temporal — quítalo cuando lo resolvamos
-        console.log("🟣 MIS KEYS →", myKeys);
-        console.log("🟢 PLANNERS CARGADOS →", (lessonPlanners || []).length);
-        console.log("🔵 TEACHERS EN PLANEACIONES →",
-            [...new Set((lessonPlanners || []).map(p => String(p.Teacher || "").trim().toUpperCase()))]
-        );
-
         return (lessonPlanners || []).filter(p => {
             const pt = String(p.Teacher || "").trim().toUpperCase();
             return myKeys.includes(pt);

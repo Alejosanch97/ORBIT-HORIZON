@@ -1958,7 +1958,9 @@ Teacher goal: ${pv.goal}`;
                 Assessment_Dimension: plan.Assessment_Dimension || "",
                 Evaluation_Instrument: plan.Evaluation_Instrument || "",
                 ClassDojo_Link: plan.ClassDojo_Link || "",
-                Source: plan.Source || "Manual",
+                // Conserva el origen real: si fue creada con Lumi, sigue siendo Lumi aunque se edite.
+                Source: plan.Source === "Lumi" ? "Lumi" : (plan.Source || "Manual"),
+                _originalSource: plan.Source || "Manual",
                 Interactive_Feedback: String(plan.Interactive_Feedback).toUpperCase() === "TRUE",
                 _feedbackQuestions: (safeParse(plan.Feedback_Questions_JSON) || []).concat(["", "", "", "", ""]).slice(0, 5),
                 Standard: safeParse(plan.AI_Content_JSON)?.Standard || "",
@@ -2047,7 +2049,9 @@ Teacher goal: ${pv.goal}`;
 
         // A) Mapeo de entradas creadas por el docente
         const formattedEntries = Object.values(formsData).map(entry => {
-            const { _mallaCtx, _feedbackQuestions, Interactive_Feedback, ...rest } = entry;
+            const { _mallaCtx, _feedbackQuestions, _originalSource, Interactive_Feedback, ...rest } = entry;
+            // Si la planeación se creó con Lumi, mantén ese origen aunque se edite en el formulario manual.
+            rest.Source = _originalSource === "Lumi" ? "Lumi" : (rest.Source || "Manual");
             const questions = (_feedbackQuestions || []).filter(q => {
                 if (!q) return false;
                 // Pregunta antigua = string; pregunta nueva = objeto { q, opts, correct }
