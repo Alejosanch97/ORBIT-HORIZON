@@ -209,7 +209,8 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
         // TANDA 2: lo pesado en segundo plano (planeaciones, detalles, observaciones)
         try {
             const [plannersResp, detailsResp, obsResp] = await Promise.all([
-                fetch(`${API}/lesson-planners?term=${encodeURIComponent(CURRENT_TERM)}`).then(r => r.json()).catch(() => []),
+                // Sin ?term → trae TODOS los periodos (así el vocabulario no depende de un solo term)
+                fetch(`${API}/lesson-planners`).then(r => r.json()).catch(() => []),
                 fetch(`${API}/activity-details`).then(r => r.json()).catch(() => []),
                 fetch(`${API}/class-observations`).then(r => r.json()).catch(() => []),
             ]);
@@ -274,6 +275,13 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
         ]
             .map(k => String(k || "").trim().toUpperCase())
             .filter(Boolean);
+
+        // 🔍 DEBUG temporal — quítalo cuando lo resolvamos
+        console.log("🟣 MIS KEYS →", myKeys);
+        console.log("🟢 PLANNERS CARGADOS →", (lessonPlanners || []).length);
+        console.log("🔵 TEACHERS EN PLANEACIONES →",
+            [...new Set((lessonPlanners || []).map(p => String(p.Teacher || "").trim().toUpperCase()))]
+        );
 
         return (lessonPlanners || []).filter(p => {
             const pt = String(p.Teacher || "").trim().toUpperCase();
