@@ -1018,12 +1018,7 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
                     </button>
                     </div>
                 </header>
-                {viewYear !== currentYear && (
-                    <div className="dh-year-banner">
-                        <span>Estás viendo el año <strong>{viewYear}</strong>. Todo lo nuevo que crees se guarda en <strong>{currentYear}</strong>.</span>
-                        <button onClick={() => dispatch({ type: 'set_view_year', payload: currentYear })}>Volver a {currentYear}</button>
-                    </div>
-                )}
+
                 <section className="dynamic-section">{renderContent()}</section>
             </main>
 
