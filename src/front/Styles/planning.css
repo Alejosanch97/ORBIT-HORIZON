@@ -2996,7 +2996,8 @@
 @keyframes actSpin { to { transform: rotate(360deg); } }
 
 /* ---------- Filtros ---------- */
-.act-toolbar { margin-bottom: 18px; }
+.act-toolbar { margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.act-year { appearance: auto; padding: 9px 14px; outline: none; }
 .act-filters { display: flex; gap: 7px; flex-wrap: wrap; }
 .act-filter {
   display: inline-flex; align-items: center; gap: 8px;

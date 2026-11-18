@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import '../Styles/accompaniment.css';
 import { GraduationCap, UserPlus, Search, ClipboardList, CheckCircle2, XCircle, Plus, LogOut, X, RefreshCw } from 'lucide-react';
 import useGlobalReducer from '../hooks/useGlobalReducer'; // <--- Importante: ajusta la ruta si tu hook está en otra carpeta
+import { YearSelect } from '../components/YearSelect';
+import { getViewYear } from '../schoolYear';
 
 const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api`;
 const CURRENT_TERM = "Third Term";
@@ -18,6 +20,7 @@ const fmtDate = (iso) => { if (!iso) return ''; const d = String(iso).split('T')
 
 export const Accompaniment = ({ userData }) => {
     const { store, dispatch } = useGlobalReducer(); // <--- Conectamos el store global
+    const viewYear = getViewYear(store); // año escolar que se está consultando
     const isAdmin = norm(userData.ROL) === 'ADMIN';
     const myGrades = (userData.Assigned_Grade || '').split(',').map(g => g.trim()).filter(Boolean);
     const teacherKey = String(userData.User_Key || userData.Teacher_Key || '').trim();
@@ -51,7 +54,7 @@ export const Accompaniment = ({ userData }) => {
     const fetchStudents = async () => {
         if (!store.students || store.students.length === 0) setLoading(true);
         try {
-            const resp = await fetch(`${API_URL}/students-alert?term=${encodeURIComponent(CURRENT_TERM)}`);
+            const resp = await fetch(`${API_URL}/students-alert?term=${encodeURIComponent(CURRENT_TERM)}&year=${viewYear}`);
             const data = await resp.json();
             if (Array.isArray(data)) {
                 dispatch({ type: 'set_students', payload: data });
@@ -60,7 +63,7 @@ export const Accompaniment = ({ userData }) => {
         setLoading(false);
     };
 
-    useEffect(() => { fetchStudents(); }, []);
+    useEffect(() => { fetchStudents(); }, [viewYear]);
 
     const filtered = useMemo(() => {
         const list = store.students || [];
@@ -172,6 +175,7 @@ export const Accompaniment = ({ userData }) => {
                     <option value="">Todos los grados</option>
                     {visibleGrades.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
+                <YearSelect className="" />
                 {(isAdmin || effectiveSubjects.length > 1) && (
                     <select
                         value={filterSubject}

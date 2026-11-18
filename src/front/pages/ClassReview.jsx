@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import useGlobalReducer from '../hooks/useGlobalReducer'; // O la ruta desde donde manejes tu hook global del store
 import '../Styles/planning.css';
+import { YearSelect } from '../components/YearSelect';
+import { getViewYear } from '../schoolYear';
 
 const API_URL = 'https://script.google.com/macros/s/AKfycbxIgwbIuGymDkRREiidM0lJYZRi5KdKS217_inoU751zp_x3EAzzxcljjNHSxZc34zBxQ/exec';
 
@@ -36,15 +38,18 @@ export const ClassReview = ({ teacherList = [] }) => {
     const [availableGrades, setAvailableGrades] = useState([]);
     const [availableSubjects, setAvailableSubjects] = useState([]);
 
+    // Año escolar que se está consultando (filtro global de año)
+    const viewYear = getViewYear(store);
+
     useEffect(() => { 
         fetchReviewsFromBackend(); 
-    }, []);
+    }, [viewYear]);
 
     // Cargar desde el backend de Flask y actualizar el store
     const fetchReviewsFromBackend = async () => {
         setIsSyncing(true);
         try {
-            const resp = await fetch(`${process.env.BACKEND_URL || "http://localhost:3001"}/api/class-observations`);
+            const resp = await fetch(`${process.env.BACKEND_URL || "http://localhost:3001"}/api/class-observations?year=${viewYear}`);
             if (resp.ok) {
                 const data = await resp.json();
                 if (Array.isArray(data)) {
@@ -213,7 +218,11 @@ export const ClassReview = ({ teacherList = [] }) => {
                 </div>
             </header>
 
-            <div className="filters-bar" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '20px' }}>
+            <div className="filters-bar" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '15px', marginBottom: '20px' }}>
+                <div className="filter-group">
+                    <label>AÑO</label>
+                    <YearSelect className="" />
+                </div>
                 <div className="filter-group">
                     <label>DOCENTE</label>
                     <input type="text" placeholder="Search..." value={filterTeacher} onChange={(e) => setFilterTeacher(e.target.value)} />

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import '../Styles/planning.css';
 import { CalendarDays, Eye, Pencil, Star, Hand, RefreshCw, User, Clock, CheckCircle2, AlertCircle, Search } from 'lucide-react';
 import useGlobalReducer from '../hooks/useGlobalReducer';
+import { YearSelect } from '../components/YearSelect';
+import { ensureSchoolYear, getViewYear } from '../schoolYear';
 
 const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api`;
 
@@ -15,6 +17,8 @@ export const ActivitiesEvents = ({ userData }) => {
     const [filterMode, setFilterMode] = useState('all');
 
     const isAdmin = userData.ROL?.toUpperCase() === 'ADMIN';
+    // Año escolar que se está consultando (solo se ven las actividades de ese año)
+    const viewYear = getViewYear(store);
 
     const [detailData, setDetailData] = useState({
         Academic_Objective: "", 
@@ -33,13 +37,13 @@ export const ActivitiesEvents = ({ userData }) => {
     const fetchActivitiesData = async () => {
         setIsSyncing(true);
         try {
-            const respAct = await fetch(`${API_URL}/activities`);
+            const respAct = await fetch(`${API_URL}/activities?year=${viewYear}`);
             const actData = await respAct.json();
             if (Array.isArray(actData)) {
                 dispatch({ type: 'set_activities', payload: actData });
             }
 
-            const respDet = await fetch(`${API_URL}/activities-details`);
+            const respDet = await fetch(`${API_URL}/activities-details?year=${viewYear}`);
             const detData = await respDet.json();
             if (Array.isArray(detData)) {
                 dispatch({ type: 'set_all_details', payload: detData });
@@ -50,9 +54,11 @@ export const ActivitiesEvents = ({ userData }) => {
         setIsSyncing(false);
     };
 
+    useEffect(() => { ensureSchoolYear(API_URL, dispatch); }, []);
+
     useEffect(() => { 
         fetchActivitiesData();
-    }, []);
+    }, [viewYear]);
 
     const getExistingDetail = (activityId) => {
         const detailsList = store.allDetails || [];
@@ -166,7 +172,7 @@ export const ActivitiesEvents = ({ userData }) => {
                     ...detailData
                 })
             });
-            const respDet = await fetch(`${API_URL}/activities-details`);
+            const respDet = await fetch(`${API_URL}/activities-details?year=${viewYear}`);
             const detData = await respDet.json();
             if (Array.isArray(detData)) {
                 dispatch({ type: 'set_all_details', payload: detData });
@@ -208,6 +214,7 @@ export const ActivitiesEvents = ({ userData }) => {
                         Sin responsable <span className="act-count alert">{freeCount}</span>
                     </button>
                 </div>
+                <YearSelect className="act-filter act-year" />
             </div>
 
             <div className="act-grid">

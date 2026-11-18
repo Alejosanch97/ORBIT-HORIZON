@@ -939,6 +939,62 @@
 .dh-sync.loading .dh-sync-icon { animation: dhSpin 1s linear infinite; }
 @keyframes dhSpin { to { transform: rotate(360deg); } }
 
+/* ---------- Año escolar ---------- */
+.dh-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dh-year {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 14px;
+  border-radius: 30px;
+  border: 1px solid #e6eaf2;
+  background: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8b6fd4;
+}
+.dh-year.past { border-color: #d9a250; color: #d9a250; }
+.dh-year-select {
+  border: none;
+  background: #f4f1fb;
+  border-radius: 20px;
+  padding: 5px 10px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #16203a;
+  cursor: pointer;
+  outline: none;
+}
+.dh-year.past .dh-year-select { background: #fbf3e6; }
+.dh-year-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: -10px 0 18px;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: #fbf3e6;
+  border: 1px solid #f0dcb8;
+  color: #7a5a22;
+  font-size: 0.82rem;
+}
+.dh-year-banner button {
+  margin-left: auto;
+  border: none;
+  border-radius: 20px;
+  padding: 6px 14px;
+  background: #d9a250;
+  color: #fff;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.76rem;
+  cursor: pointer;
+}
+
 /* ---------- Métricas ---------- */
 .metrics-row {
   display: grid;

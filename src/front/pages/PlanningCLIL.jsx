@@ -9,6 +9,8 @@ import { BohrOrbit } from './BohrOrbit';
 import { LumiDash } from './LumiDash';
 import { normalizeQuestions, GAME_CATALOG } from './gameUtils';
 import useGlobalReducer from '../hooks/useGlobalReducer';
+import { YearSelect } from '../components/YearSelect';
+import { ensureSchoolYear, getCurrentYear, getViewYear, recordYear } from '../schoolYear';
 
 // Base del backend propio. Como el blueprint se registra con url_prefix='/api',
 // aquí incluimos el /api. VITE_BACKEND_URL NO debe terminar en /api.
@@ -160,7 +162,10 @@ const TERM_NUMBER = { "First Term": 1, "Second Term": 2, "Third Term": 3, "Fourt
 
 // Devuelve el periodo académico vigente según el mes actual.
 // Ajusta los rangos de meses a tu calendario escolar si cambian.
-const getCurrentTerm = () => {
+// Si el año escolar vigente ya es el siguiente (ej. nov-2026 → 2027),
+// los profes están planeando el arranque: el periodo vigente es First Term.
+const getCurrentTerm = (schoolYear) => {
+    if (schoolYear && Number(schoolYear) > new Date().getFullYear()) return "First Term";
     const month = new Date().getMonth() + 1;
     if (month >= 1 && month <= 3) return "First Term";
     if (month >= 4 && month <= 6) return "Second Term";
@@ -756,6 +761,9 @@ export const PlanningCLIL = ({ userData }) => {
     const [filterTerm, setFilterTerm] = useState("");
 
     const isAdmin = String(userData.ROL).trim().toLowerCase() === 'admin';
+    // Año escolar: currentYear = donde se GUARDA lo nuevo; viewYear = lo que se está viendo
+    const currentYear = getCurrentYear(store);
+    const viewYear = getViewYear(store);
     const userGrades = userData.Assigned_Grade?.split(',').map(g => g.trim()) || [];
     const userSubjects = userData.Assigned_Subject?.split(',').map(s => s.trim()) || [];
     const teacherFirstName = (userData.Teacher_Name || userData.User_Key || 'profe').split(' ')[0];
@@ -780,9 +788,20 @@ export const PlanningCLIL = ({ userData }) => {
             fetchCurriculum();
             fetchPlanReviews();
             fetchLumiConfig(); // asegura que el avatar salga igual que en Profile
+            ensureSchoolYear(API, dispatch);
         }, 0);
         return () => clearTimeout(t);
     }, []);
+
+    // Al cambiar el año en el filtro: año vigente → periodo actual; año pasado → todo ese año
+    const prevViewYear = useRef(viewYear);
+    useEffect(() => {
+        if (prevViewYear.current === viewYear) return;
+        prevViewYear.current = viewYear;
+        setFilterTerm("");
+        if (viewYear === currentYear) fetchData(undefined, viewYear);
+        else if (!loadedTerms.current.has(`${viewYear}|*`)) fetchData('*', viewYear);
+    }, [viewYear]);
     useEffect(() => {
         const scrollToEnd = () => {
             const el = chatEndRef.current;
@@ -836,7 +855,7 @@ export const PlanningCLIL = ({ userData }) => {
     /* Trae las revisiones de planeación hechas por coordinación */
     const fetchPlanReviews = async () => {
         try {
-            const resp = await fetch(`${API}/class-observations`);
+            const resp = await fetch(`${API}/class-observations?year=all`);
             const data = await resp.json();
             if (Array.isArray(data)) {
                 setPlanReviews(data.filter(r => String(r.ID_Lesson_Ref || '').startsWith('PLAN-')));
@@ -1700,6 +1719,7 @@ Teacher goal: ${pv.goal}`;
                 norm(p.Grade) === norm(selGrade) &&
                 norm(p.Subject) === norm(selSubject) &&
                 norm(p.Term) === norm(selTerm) &&
+                recordYear(p, currentYear) === currentYear && // solo la secuencia del año vigente
                 String(p.Teacher || '').trim() === teacherKey
             )
             .reduce((max, p) => Math.max(max, maxSessionNum(p.Session_Number)), 0);
@@ -1716,6 +1736,8 @@ Teacher goal: ${pv.goal}`;
                 Grade: selGrade,
                 Subject: selSubject,
                 Term: selTerm,
+                // Stamp de año: lo nuevo va al año vigente; una edición conserva su año
+                School_Year: Number(s.School_Year) || currentYear,
                 "Start Date": s["Start Date"] || "",
                 "Finish Date": s["Finish Date"] || "",
                 // Si es edición conserva su número; si es nueva calcula el consecutivo
@@ -1767,6 +1789,9 @@ Teacher goal: ${pv.goal}`;
         // 3.1 Ya se guardó de verdad: limpiar el borrador temporal de Lumi
         localStorage.removeItem(LUMI_STATE_KEY);
 
+        // Si estaba viendo otro año, vuelve al vigente para ver lo que acaba de crear
+        if (viewYear !== currentYear) dispatch({ type: 'set_view_year', payload: currentYear });
+
         // 4. Feedback inmediato al chat y cambio de vista
         pushLumi('✅ ¡Guardado localmente! Sincronizando con Excel en segundo plano…', 100);
         setTimeout(() => setView('list'), 400);
@@ -1813,8 +1838,16 @@ Teacher goal: ${pv.goal}`;
     /* ================= PLANNER ORIGINAL ================= */
     // termOverride: si viene, trae ese periodo. Si no, trae el periodo actual.
     // Guardamos qué periodos ya cargamos para no repetir fetch al filtrar.
-    const fetchData = async (termOverride) => {
-        const termToFetch = termOverride || getCurrentTerm();
+    // yearOverride: año a traer (por defecto el que se está viendo).
+    // termOverride === '*' trae TODOS los periodos de ese año.
+    const fetchData = async (termOverride, yearOverride) => {
+        const yearToFetch = Number(yearOverride) || viewYear;
+        // Año vigente → periodo actual. Año pasado → todos sus periodos.
+        const termToFetch = termOverride || (yearToFetch === currentYear ? getCurrentTerm(yearToFetch) : '*');
+        const allTerms = termToFetch === '*';
+        const samePeriod = (p) =>
+            recordYear(p, currentYear) === yearToFetch &&
+            (allTerms || String(p.Term).trim() === termToFetch);
 
         // Evita múltiples fetches simultáneos del mismo término
         if (isSyncing && !termOverride) return;
@@ -1827,10 +1860,11 @@ Teacher goal: ${pv.goal}`;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-            console.log('[fetchData] Fetching term:', termToFetch);
+            console.log('[fetchData] Fetching year/term:', yearToFetch, termToFetch);
 
+            const termQs = allTerms ? '' : `&term=${encodeURIComponent(termToFetch)}`;
             const resp = await fetch(
-                `${API}/lesson-planners?term=${encodeURIComponent(termToFetch)}`,
+                `${API}/lesson-planners?year=${yearToFetch}${termQs}`,
                 { signal: controller.signal }
             );
             clearTimeout(timeoutId);
@@ -1856,7 +1890,7 @@ Teacher goal: ${pv.goal}`;
                     const stored = JSON.parse(localStorage.getItem('local_plannings') || '[]');
                     const remaining = stored.filter(sp =>
                         !backendIds.has(String(sp.ID_Setup)) &&
-                        String(sp.Term).trim() !== termToFetch // y descarta los locales viejos de este periodo
+                        !samePeriod(sp) // y descarta los locales viejos de este periodo/año
                     );
                     localStorage.setItem('local_plannings', JSON.stringify(remaining));
                 } catch (e) { console.warn('No se pudo reconciliar local_plannings:', e); }
@@ -1866,13 +1900,13 @@ Teacher goal: ${pv.goal}`;
                     // Quita del estado previo lo de este periodo Y cualquier duplicado que venga del backend
                     const backendIds = new Set(incoming.map(p => String(p.ID_Setup)));
                     const sinEseTerm = prev.filter(p =>
-                        String(p.Term).trim() !== termToFetch &&
+                        !samePeriod(p) &&
                         !backendIds.has(String(p.ID_Setup))
                     );
                     merged = [...incoming, ...sinEseTerm];
                     return merged;
                 });
-                loadedTerms.current.add(termToFetch);
+                loadedTerms.current.add(`${yearToFetch}|${termToFetch}`);
                 // Espejamos al store DESPUÉS del setState (no dentro del updater)
                 if (merged) dispatch({ type: 'set_plannings', payload: merged });
             } else {
@@ -1997,6 +2031,7 @@ Teacher goal: ${pv.goal}`;
                     "Thinking Skill": [], "Language Frame": [], "Thinking Routine": "",
                     "Richmond Resources": "", "Activity Link": "", "Parent Task": "",
                     "Weekly Challenge": "", "% Status": "0%", ID_Setup: `ID-${Date.now()}-${grade}`,
+                    School_Year: currentYear,
                     Teacher: String(userData.Teacher_Key || userData.User_Key || "").trim(),
                     Source: "Manual",
                     DBA_Reference: "", SDG_Connection: "", Assessment_Dimension: "", Evaluation_Instrument: "",
@@ -2100,6 +2135,9 @@ Teacher goal: ${pv.goal}`;
         // 3. Cerrar formulario y cambiar vista AL INSTANTE
         handleCancelForm();
         setView('list');
+        // Si eran nuevas y estaba viendo otro año, vuelve al año donde quedaron guardadas
+        const savedYear = Number(formattedEntries[0]?.School_Year) || currentYear;
+        if (viewYear !== savedYear) dispatch({ type: 'set_view_year', payload: savedYear });
 
         // C) PUSH A EXCEL EN SEGUNDO PLANO
         try {
@@ -2124,8 +2162,9 @@ Teacher goal: ${pv.goal}`;
 
             // Trae la verdad del backend para ver exactamente lo que quedó guardado
             const termToRefresh = formattedEntries[0]?.Term;
-            loadedTerms.current.delete(termToRefresh); // fuerza re-fetch de ese periodo
-            await fetchData(termToRefresh);
+            const yearToRefresh = Number(formattedEntries[0]?.School_Year) || currentYear;
+            loadedTerms.current.delete(`${yearToRefresh}|${termToRefresh}`); // fuerza re-fetch de ese periodo
+            await fetchData(termToRefresh, yearToRefresh);
         } catch (error) {
             console.error("Error sincronizando planeaciones manuales:", error);
         } finally {
@@ -2157,6 +2196,7 @@ Teacher goal: ${pv.goal}`;
     };
 
     const filteredPlannings = plannings.filter(p =>
+        recordYear(p, currentYear) === viewYear &&
         (filterGrade === "" || p.Grade === filterGrade) &&
         (filterSubject === "" || p.Subject === filterSubject) &&
         (filterTerm === "" || p.Term === filterTerm)
@@ -3302,6 +3342,7 @@ Teacher goal: ${pv.goal}`;
                                 {!isFiltered && orderedPlannings.length > displayedPlannings.length && ` de ${orderedPlannings.length}`}
                             </div>
                             <div className="pl-filters">
+                                <YearSelect className="pl-select" />
                                 <select className="pl-select" value={filterGrade} onChange={(e) => setFilterGrade(e.target.value)}>
                                     <option value="">Todos los grados</option>
                                     {gradeOptions.map(g => <option key={g} value={g}>{g}</option>)}
@@ -3314,11 +3355,12 @@ Teacher goal: ${pv.goal}`;
                                     const t = e.target.value;
                                     setFilterTerm(t);
                                     // Si eligen un periodo que aún no traemos del backend, lo cargamos ahora
-                                    if (t && !loadedTerms.current.has(t)) fetchData(t);
+                                    const loaded = loadedTerms.current.has(`${viewYear}|${t}`) || loadedTerms.current.has(`${viewYear}|*`);
+                                    if (t && !loaded) fetchData(t, viewYear);
                                 }}>
                                     <option value="">Todos los periodos</option>
                                     {TERMS.map(t => <option key={t} value={t}>
-                                        {t}{loadedTerms.current.has(t) ? '' : ' (cargar)'}
+                                        {t}{(loadedTerms.current.has(`${viewYear}|${t}`) || loadedTerms.current.has(`${viewYear}|*`)) ? '' : ' (cargar)'}
                                     </option>)}
                                 </select>
                                 {isFiltered && (
@@ -3354,7 +3396,7 @@ Teacher goal: ${pv.goal}`;
                                             <div className="pl-main">
                                                 <div className="pl-tags">
                                                     <span className="pl-tag subject">{plan.Subject}</span>
-                                                    <span className="pl-tag grade">{plan.Grade} · {plan.Term}</span>
+                                                    <span className="pl-tag grade">{plan.Grade} · {plan.Term} · {recordYear(plan, currentYear)}</span>
                                                     {plan.Session_Number && <span className="pl-tag session">Sesión {plan.Session_Number}</span>}
                                                     <span className={`pl-tag source ${isAI ? 'ai' : 'manual'}`}>
                                                         {isAI ? Icon.spark : Icon.pencil}
@@ -3436,7 +3478,7 @@ Teacher goal: ${pv.goal}`;
                                     <i>·</i>
                                     <span>{p.Grade}</span>
                                     <i>·</i>
-                                    <span>{p.Term}</span>
+                                    <span>{p.Term} {recordYear(p, currentYear)}</span>
                                     <i>·</i>
                                     <span>Sesión {p.Session_Number || '—'}</span>
                                 </div>

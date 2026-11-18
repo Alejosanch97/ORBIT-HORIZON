@@ -258,6 +258,9 @@ class StudentsAlert(db.Model):
     Last_Updated: Mapped[str] = mapped_column(String(50), nullable=True)
     Active: Mapped[str] = mapped_column(String(50), nullable=True)
 
+    # Año escolar (stamp): 2026, 2027... Se asigna al crear el registro.
+    School_Year: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="students_alert")
 
@@ -265,6 +268,7 @@ class StudentsAlert(db.Model):
         return {
             "id": self.id,
             "colegio_id": self.colegio_id,
+            "School_Year": self.School_Year,
             "ID_Student": self.ID_Student,
             "Student_Name": self.Student_Name,
             "Grade": self.Grade,
@@ -303,6 +307,9 @@ class ParentMeetings(db.Model):
     Responsible: Mapped[str] = mapped_column(String(100), nullable=True)
     Term: Mapped[str] = mapped_column(String(50), nullable=True)
 
+    # Año escolar (stamp): 2026, 2027... Se asigna al crear el registro.
+    School_Year: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="parent_meetings")
 
@@ -310,6 +317,7 @@ class ParentMeetings(db.Model):
         return {
             "id": self.id,
             "colegio_id": self.colegio_id,
+            "School_Year": self.School_Year,
             "ID_Meeting": self.ID_Meeting,
             "ID_Student": self.ID_Student,
             "Student_Name": self.Student_Name,
@@ -435,6 +443,9 @@ class LessonPlanners(db.Model):
     Assessment_Dimension: Mapped[str] = mapped_column(Text, nullable=True)
     Evaluation_Instrument: Mapped[str] = mapped_column(Text, nullable=True)
 
+    # Año escolar (stamp): 2026, 2027... Se asigna al crear el registro.
+    School_Year: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="lesson_planners")
 
@@ -442,6 +453,7 @@ class LessonPlanners(db.Model):
         return {
             "id": self.id,
             "colegio_id": self.colegio_id,
+            "School_Year": self.School_Year,
             "ID_Setup": self.ID_Setup,
             "Grade": self.Grade,
             "Subject": self.Subject,
@@ -557,6 +569,9 @@ class ActivitiesCalendar(db.Model):
     Admin_Feedback: Mapped[str] = mapped_column(Text, nullable=True)
     Start: Mapped[str] = mapped_column(String(50), nullable=True)
 
+    # Año escolar (stamp): 2026, 2027... Se asigna al crear el registro.
+    School_Year: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="activities_calendar")
 
@@ -564,6 +579,7 @@ class ActivitiesCalendar(db.Model):
         return {
             "id": self.id,
             "colegio_id": self.colegio_id,
+            "School_Year": self.School_Year,
             "ID_Activity": self.ID_Activity,
             "Event_Name": self.Event_Name,
             "Responsable_ID": self.Responsable_ID,
@@ -610,6 +626,9 @@ class ClassObservations(db.Model):
     Next_Steps: Mapped[str] = mapped_column(Text, nullable=True)
     Commitment: Mapped[str] = mapped_column(Text, nullable=True)
 
+    # Año escolar (stamp): 2026, 2027... Se asigna al crear el registro.
+    School_Year: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="class_observations")
 
@@ -617,6 +636,7 @@ class ClassObservations(db.Model):
         return {
             "id": self.id,
             "colegio_id": self.colegio_id,
+            "School_Year": self.School_Year,
             "ID_Lesson_Ref": self.ID_Lesson_Ref,
             "Teacher_Name": self.Teacher_Name,
             "Subject": self.Subject,
@@ -669,6 +689,9 @@ class ActivityDetailsForm(db.Model):
     Feedback: Mapped[str] = mapped_column(Text, nullable=True)
     Score: Mapped[str] = mapped_column(String(50), nullable=True)
 
+    # Año escolar (stamp): 2026, 2027... Se asigna al crear el registro.
+    School_Year: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
+
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="activity_details_form")
 
@@ -676,6 +699,7 @@ class ActivityDetailsForm(db.Model):
         return {
             "id": self.id,
             "colegio_id": self.colegio_id,
+            "School_Year": self.School_Year,
             "ID_Detail": self.ID_Detail,
             "ID_Activity": self.ID_Activity,
             "Academic_Objective": self.Academic_Objective,

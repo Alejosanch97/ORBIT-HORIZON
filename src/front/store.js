@@ -41,6 +41,11 @@ export const initialStore = () => {
     // --- Agenda / Retos / Recursos (Dashboard) ---
     weeklyChallenges: [],
 
+    // --- Año escolar ---
+    schoolYear: null,      // año vigente (viene de /api/school-year)
+    availableYears: [],    // años con datos, para los filtros
+    viewYear: null,        // año que se está consultando (null = año vigente)
+
     // --- Lumi ---
     lumiConfig: { ...DEFAULT_CFG },
     lumiName: "Lumi",
@@ -57,6 +62,20 @@ export default function storeReducer(store, action = {}) {
   switch (action.type) {
     case "set_hello":
       return { ...store, message: action.payload };
+
+    /* ============================================================
+       AÑO ESCOLAR
+       ============================================================ */
+    case "set_school_year": {
+      return {
+        ...store,
+        schoolYear: action.payload.current,
+        availableYears: action.payload.years || [],
+      };
+    }
+    case "set_view_year": {
+      return { ...store, viewYear: action.payload };
+    }
 
     /* ============================================================
        STUDENTS ALERT (Acompañamiento)

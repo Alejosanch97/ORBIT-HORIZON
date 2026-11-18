@@ -14,6 +14,8 @@ import { NotificationsSender } from './NotificationsSender';
 import { SuperAdminCompanies } from './SuperAdminCompanies';
 import { SuperAdminUsers } from './SuperAdminUsers';
 import { DataTableEditor } from './DataTableEditor';
+import { YearSelect } from '../components/YearSelect';
+import { ensureSchoolYear, getViewYear, getCurrentYear } from '../schoolYear';
 
 const API = `${import.meta.env.VITE_BACKEND_URL}/api`;
 const CURRENT_TERM = "Third Term";
@@ -44,6 +46,9 @@ const INITIAL_GOALS_2026 = [
 
 export const Dashboard = ({ user: propUser, onLogout }) => {
     const { store, dispatch } = useGlobalReducer();
+    // Año escolar que se está consultando (por defecto el vigente)
+    const viewYear = getViewYear(store);
+    const currentYear = getCurrentYear(store);
 
     const [activeTab, setActiveTab] = useState("profile");
     const [userData, setUserData] = useState(null);
@@ -171,6 +176,17 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
         }
     }, [propUser, navigate]);
 
+    // Año escolar vigente desde el backend (una vez)
+    useEffect(() => { ensureSchoolYear(API, dispatch); }, []);
+
+    // Si cambian el año en el filtro, recargamos los datos de ese año
+    const prevViewYear = useRef(viewYear);
+    useEffect(() => {
+        if (prevViewYear.current === viewYear) return;
+        prevViewYear.current = viewYear;
+        if (userData) fetchAll(userData);
+    }, [viewYear]);
+
     useEffect(() => {
         if (isLoading) {
             setSyncTime(0);
@@ -193,7 +209,7 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
             const [teachersResp, challengesResp, activitiesResp] = await Promise.all([
                 fetch(`${API}/teachers-users`).then(r => r.json()).catch(() => ({ data: [] })),
                 fetch(`${API}/weekly-challenges`).then(r => r.json()).catch(() => []),
-                fetch(`${API}/activities-calendar`).then(r => r.json()).catch(() => []),
+                fetch(`${API}/activities-calendar?year=${viewYear}`).then(r => r.json()).catch(() => []),
             ]);
 
             if (teachersResp?.status === 'success') {
@@ -210,9 +226,9 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
         try {
             const [plannersResp, detailsResp, obsResp] = await Promise.all([
                 // Sin ?term → trae TODOS los periodos (así el vocabulario no depende de un solo term)
-                fetch(`${API}/lesson-planners`).then(r => r.json()).catch(() => []),
-                fetch(`${API}/activity-details`).then(r => r.json()).catch(() => []),
-                fetch(`${API}/class-observations`).then(r => r.json()).catch(() => []),
+                fetch(`${API}/lesson-planners?year=${viewYear}`).then(r => r.json()).catch(() => []),
+                fetch(`${API}/activity-details?year=${viewYear}`).then(r => r.json()).catch(() => []),
+                fetch(`${API}/class-observations?year=${viewYear}`).then(r => r.json()).catch(() => []),
             ]);
             setLessonPlanners(Array.isArray(plannersResp) ? plannersResp : []);
             dispatch({ type: 'set_all_details', payload: Array.isArray(detailsResp) ? detailsResp : [] });
@@ -986,6 +1002,11 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
                         <span className="dh-eyebrow">Bilingual Management</span>
                         <h2>{activeTab === 'profile' ? 'Mi espacio' : activeTab.toUpperCase()}</h2>
                     </div>
+                    <div className="dh-actions">
+                    <label className={`dh-year ${viewYear !== currentYear ? 'past' : ''}`} title="Año escolar que estás viendo">
+                        <span>Año</span>
+                        <YearSelect className="dh-year-select" />
+                    </label>
                     <button
                         onClick={() => fetchAll()}
                         disabled={isLoading}
@@ -995,7 +1016,14 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
                         <RefreshCw size={15} strokeWidth={2.4} className="dh-sync-icon" />
                         <span>{isLoading ? `Sincronizando ${syncTime.toFixed(1)}s` : 'Actualizado'}</span>
                     </button>
+                    </div>
                 </header>
+                {viewYear !== currentYear && (
+                    <div className="dh-year-banner">
+                        <span>Estás viendo el año <strong>{viewYear}</strong>. Todo lo nuevo que crees se guarda en <strong>{currentYear}</strong>.</span>
+                        <button onClick={() => dispatch({ type: 'set_view_year', payload: currentYear })}>Volver a {currentYear}</button>
+                    </div>
+                )}
                 <section className="dynamic-section">{renderContent()}</section>
             </main>
 

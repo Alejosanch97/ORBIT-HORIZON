@@ -14,6 +14,10 @@ import json
 from datetime import datetime
 
 from api.ai_service import generate_with_fallback
+from api.school_year import (
+    FIRST_SCHOOL_YEAR, current_school_year, to_year,
+    apply_year_filter, year_for_new_record
+)
 
 
 api = Blueprint('api', __name__)
@@ -75,13 +79,35 @@ def login():
 
 
 # ==========================================
+# AÑO ESCOLAR
+# ==========================================
+@api.route('/school-year', methods=['GET'])
+def get_school_year():
+    """Año escolar vigente + lista de años disponibles para los filtros."""
+    current = current_school_year()
+    years = set(range(FIRST_SCHOOL_YEAR, current + 1))
+    try:
+        for model in (LessonPlanners, ActivitiesCalendar):
+            for (y,) in db.session.query(model.School_Year).distinct().all():
+                if y:
+                    years.add(int(y))
+    except Exception:
+        db.session.rollback()
+    return jsonify({
+        "status": "success",
+        "current": current,
+        "years": sorted(years, reverse=True)
+    }), 200
+
+
+# ==========================================
 # STUDENTS ALERT (Acompañamiento)
 # ==========================================
 @api.route('/students-alert', methods=['GET'])
 def get_students_alert():
     term = request.args.get('term')
     try:
-        query = StudentsAlert.query
+        query = apply_year_filter(StudentsAlert.query, StudentsAlert, request.args)
         if term:
             query = query.filter_by(Term=term)
         return jsonify([s.serialize() for s in query.all()]), 200
@@ -113,7 +139,8 @@ def create_student_alert():
             Teacher_Key=data.get('Teacher_Key'),
             Created_By=data.get('Created_By', 'teacher'),
             Last_Updated=now_iso(),
-            Active='TRUE'
+            Active='TRUE',
+            School_Year=year_for_new_record(data)
         )
         db.session.add(new_student)
         db.session.commit()
@@ -215,7 +242,7 @@ def toggle_student_active(id_student):
 def get_parent_meetings():
     term = request.args.get('term')
     try:
-        query = ParentMeetings.query
+        query = apply_year_filter(ParentMeetings.query, ParentMeetings, request.args)
         if term:
             query = query.filter_by(Term=term)
         return jsonify([m.serialize() for m in query.all()]), 200
@@ -243,7 +270,8 @@ def create_parent_meeting():
             Commitments=data.get('Commitments'),
             Next_Followup=data.get('Next_Followup'),
             Responsible=data.get('Responsible'),
-            Term=data.get('Term', 'Third Term')
+            Term=data.get('Term', 'Third Term'),
+            School_Year=year_for_new_record(data)
         )
         db.session.add(new_meeting)
         db.session.commit()
@@ -259,7 +287,8 @@ def create_parent_meeting():
 @api.route('/activities-calendar', methods=['GET'])
 def get_activities_calendar():
     try:
-        activities = ActivitiesCalendar.query.all()
+        activities = apply_year_filter(
+            ActivitiesCalendar.query, ActivitiesCalendar, request.args).all()
         return jsonify([a.serialize() for a in activities]), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -269,7 +298,8 @@ def get_activities_calendar():
 @api.route('/activities', methods=['GET'])
 def get_activities_alias():
     try:
-        activities = ActivitiesCalendar.query.all()
+        activities = apply_year_filter(
+            ActivitiesCalendar.query, ActivitiesCalendar, request.args).all()
         return jsonify([a.serialize() for a in activities]), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -296,7 +326,8 @@ def assign_activity(id_activity):
 @api.route('/activity-details', methods=['GET'])
 def get_activity_details():
     try:
-        details = ActivityDetailsForm.query.all()
+        details = apply_year_filter(
+            ActivityDetailsForm.query, ActivityDetailsForm, request.args).all()
         return jsonify([d.serialize() for d in details]), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -306,7 +337,8 @@ def get_activity_details():
 @api.route('/activities-details', methods=['GET'])
 def get_activity_details_alias():
     try:
-        details = ActivityDetailsForm.query.all()
+        details = apply_year_filter(
+            ActivityDetailsForm.query, ActivityDetailsForm, request.args).all()
         return jsonify([d.serialize() for d in details]), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -357,7 +389,14 @@ def save_or_update_activity_detail():
             detail.Score = data.get('Score', detail.Score)
             detail.Last_Updated = now_iso()
         else:
+            # El detalle hereda el año de su actividad (o el año actual)
+            parent = (ActivitiesCalendar.query
+                      .filter_by(ID_Activity=str(activity_id)).first()
+                      if activity_id else None)
+            detail_year = (parent.School_Year if parent and parent.School_Year
+                           else year_for_new_record(data))
             detail = ActivityDetailsForm(
+                School_Year=detail_year,
                 colegio_id=get_colegio_id(data),
                 ID_Activity=activity_id,
                 ID_Detail=data.get('ID_Detail') or gen_id('DET'),
@@ -389,7 +428,8 @@ def save_or_update_activity_detail():
 @api.route('/class-observations', methods=['GET'])
 def get_class_observations():
     try:
-        observations = ClassObservations.query.all()
+        observations = apply_year_filter(
+            ClassObservations.query, ClassObservations, request.args).all()
         return jsonify([o.serialize() for o in observations]), 200
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
@@ -422,7 +462,8 @@ def save_or_update_class_observation():
         elif not obs:
             obs = ClassObservations(
                 colegio_id=get_colegio_id(data),
-                ID_Lesson_Ref=lesson_ref or gen_id('REV')
+                ID_Lesson_Ref=lesson_ref or gen_id('REV'),
+                School_Year=year_for_new_record(data)
             )
             db.session.add(obs)
 
@@ -622,7 +663,7 @@ def get_lesson_planners():
     term = request.args.get('term')
     teacher = request.args.get('teacher')
     try:
-        query = LessonPlanners.query
+        query = apply_year_filter(LessonPlanners.query, LessonPlanners, request.args)
         if term:
             query = query.filter_by(Term=term)
         if teacher:
@@ -680,6 +721,10 @@ def _apply_planner_fields(plan, data):
         'Assessment_Dimension', default=plan.Assessment_Dimension)
     plan.Evaluation_Instrument = g(
         'Evaluation_Instrument', default=plan.Evaluation_Instrument)
+    # El año solo cambia si viene explícito y válido en el payload
+    explicit_year = to_year(data.get('School_Year'))
+    if explicit_year:
+        plan.School_Year = explicit_year
     return plan
 
 
@@ -700,7 +745,8 @@ def create_lesson_planner():
             return jsonify({"status": "success", "data": plan.serialize()}), 200
         plan = LessonPlanners(
             colegio_id=get_colegio_id(data),
-            ID_Setup=id_setup
+            ID_Setup=id_setup,
+            School_Year=year_for_new_record(data)
         )
         _apply_planner_fields(plan, data)
         db.session.add(plan)
@@ -1016,6 +1062,9 @@ def append_table_rows(table_name):
                 continue
             if has_colegio and not clean_data.get('colegio_id'):
                 clean_data['colegio_id'] = colegio_id
+            # Tablas con año: si no viene, se estampa el año escolar actual
+            if 'School_Year' in editable:
+                clean_data['School_Year'] = year_for_new_record(clean_data)
             obj = model(**clean_data)
             db.session.add(obj)
             created += 1
@@ -1066,6 +1115,10 @@ def update_table_row(table_name, row_id):
         # Solo actualiza columnas válidas (ignora id y colegio_id para no romper la fila)
         for k, v in data.items():
             if k in editable and k not in ('id', 'colegio_id'):
+                if k == 'School_Year':
+                    v = to_year(v)
+                    if not v:
+                        continue  # ignora años vacíos o inválidos
                 setattr(obj, k, v)
 
         db.session.commit()
