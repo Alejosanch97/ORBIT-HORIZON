@@ -1088,6 +1088,44 @@ export const PlanningCLIL = ({ userData }) => {
     /* Materias que comparten la malla/plan de área de SCIENCE */
     const scienceFamily = (subject) => /science|scien|cienc|health|nutrition|nutric|salud|chemi|quimic|químic|physic|física|fisica|biolog/i.test(String(subject || ''));
 
+    /* SCIENCE "base" (Science / Ciencias / Natural Science), no sus derivadas */
+    const isScienceBase = (subject) => {
+        const t = String(subject || '').trim();
+        return /^(natural\s+)?sciences?$|^ciencias(\s+naturales)?$/i.test(t);
+    };
+
+    /* Une el contexto de dos mallas: lo de la materia propia primero, sin repetir.
+       ODS y reto se quedan con los de la materia propia (solo si no tiene, usa los de SCIENCE). */
+    const mergeMallaCtx = (own, base) => {
+        const uni = (a = [], b = []) => [...new Set([...(a || []), ...(b || [])])];
+        return {
+            ...own,
+            dbas: uni(own.dbas, base.dbas),
+            standards: uni(own.standards, base.standards),
+            objectives: uni(own.objectives, base.objectives),
+            contents: uni(own.contents, base.contents),
+            sdgs: own.sdgs?.length ? own.sdgs : (base.sdgs || []),
+            challenge: own.challenge || base.challenge || '',
+            steps: own.steps?.length ? own.steps : (base.steps || []),
+            raw: own.raw || base.raw,
+        };
+    };
+
+    /* Une dos syllabus: listas se suman (sin repetir), textos se quedan con los propios */
+    const deepMergeContext = (own, base) => {
+        if (Array.isArray(own) || Array.isArray(base)) {
+            const a = Array.isArray(own) ? own : [], b = Array.isArray(base) ? base : [];
+            const seen = new Set(a.map(x => JSON.stringify(x)));
+            return [...a, ...b.filter(x => !seen.has(JSON.stringify(x)))];
+        }
+        if (own && typeof own === 'object' && base && typeof base === 'object') {
+            const out = { ...base };
+            Object.keys(own).forEach(k => { out[k] = k in base ? deepMergeContext(own[k], base[k]) : own[k]; });
+            return out;
+        }
+        return (own !== undefined && own !== null && own !== '') ? own : base;
+    };
+
     const resolveCurriculum = (subject, grade, term, freshMaps, freshSyll) => {
         // Usa datos frescos si se pasan (recién traídos del fetch); si no, el estado
         const maps = freshMaps || curriculumMaps;
@@ -1117,10 +1155,44 @@ export const PlanningCLIL = ({ userData }) => {
             || maps.find(m => subjectMatches(m.Subject) && norm(m.Grade) === norm(grade) && norm(m.Term) === norm(term))
             || maps.find(m => subjectMatches(m.Subject) && norm(m.Grade) === norm(grade));
         console.log('[RESOLVE] Malla usada:', malla ? { id: malla.id, ID_Map: malla.ID_Map, Subject: malla.Subject, Grade: malla.Grade } : null);
-        const syllabus =
-            sylls.find(s => subjectMatches(s.Subject) && norm(s.Grade) === norm(grade))
+        // ---- Syllabus: primero el de la materia exacta, luego el de la familia ----
+        const primarySyllabus =
+            sylls.find(s => exactSubject(s.Subject) && norm(s.Grade) === norm(grade))
+            || sylls.find(s => exactSubject(s.Subject))
+            || sylls.find(s => subjectMatches(s.Subject) && norm(s.Grade) === norm(grade))
             || sylls.find(s => subjectMatches(s.Subject));
-        const ctx = malla ? extractFromMalla(malla.Content_JSON, term) : { dbas: [], standards: [], sdgs: [], objectives: [], contents: [], steps: [], challenge: '', raw: null };
+
+        let ctx = malla ? extractFromMalla(malla.Content_JSON, term) : { dbas: [], standards: [], sdgs: [], objectives: [], contents: [], steps: [], challenge: '', raw: null };
+        let syllabus = primarySyllabus;
+
+        // ---- Ciencias: Physics, Chemistry, Biology, Health… leen TAMBIÉN la de SCIENCE ----
+        // Lo propio de la materia va primero; SCIENCE se suma como contexto extra.
+        if (scienceFamily(subject) && !isScienceBase(subject)) {
+            const baseMalla =
+                maps.find(m => isScienceBase(m.Subject) && norm(m.Grade) === norm(grade) && norm(m.Term) === norm(term))
+                || maps.find(m => isScienceBase(m.Subject) && norm(m.Grade) === norm(grade));
+            if (baseMalla && baseMalla !== malla) {
+                const baseCtx = extractFromMalla(baseMalla.Content_JSON, term);
+                ctx = mergeMallaCtx(ctx, baseCtx);
+                console.log('[RESOLVE] + Malla SCIENCE como contexto:', { id: baseMalla.id, ID_Map: baseMalla.ID_Map });
+            }
+            const baseSyllabus =
+                sylls.find(s => isScienceBase(s.Subject) && norm(s.Grade) === norm(grade))
+                || sylls.find(s => isScienceBase(s.Subject));
+            if (baseSyllabus && baseSyllabus !== primarySyllabus) {
+                syllabus = primarySyllabus
+                    ? {
+                        ...primarySyllabus,
+                        Summary_JSON: JSON.stringify(deepMergeContext(
+                            safeParse(primarySyllabus.Summary_JSON) || {},
+                            safeParse(baseSyllabus.Summary_JSON) || {}
+                        ))
+                    }
+                    : baseSyllabus;
+                console.log('[RESOLVE] + Syllabus SCIENCE como contexto:', { id: baseSyllabus.id });
+            }
+        }
+
         return { malla, syllabus, ctx };
     };
 
