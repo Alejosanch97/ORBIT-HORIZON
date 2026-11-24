@@ -1108,9 +1108,15 @@ export const PlanningCLIL = ({ userData }) => {
                     .map(m => ({ Subject: norm(m.Subject), Grade: norm(m.Grade), Term: norm(m.Term) })));
         }
 
+        // Primero la malla de la MISMA materia (MATH ≠ GEOMETRY ≠ STATISTICS);
+        // solo si no existe se usa una de la misma familia.
+        const exactSubject = (rowSubject) => norm(rowSubject) === norm(subject);
         const malla =
-            maps.find(m => subjectMatches(m.Subject) && norm(m.Grade) === norm(grade) && norm(m.Term) === norm(term))
+            maps.find(m => exactSubject(m.Subject) && norm(m.Grade) === norm(grade) && norm(m.Term) === norm(term))
+            || maps.find(m => exactSubject(m.Subject) && norm(m.Grade) === norm(grade))
+            || maps.find(m => subjectMatches(m.Subject) && norm(m.Grade) === norm(grade) && norm(m.Term) === norm(term))
             || maps.find(m => subjectMatches(m.Subject) && norm(m.Grade) === norm(grade));
+        console.log('[RESOLVE] Malla usada:', malla ? { id: malla.id, ID_Map: malla.ID_Map, Subject: malla.Subject, Grade: malla.Grade } : null);
         const syllabus =
             sylls.find(s => subjectMatches(s.Subject) && norm(s.Grade) === norm(grade))
             || sylls.find(s => subjectMatches(s.Subject));
