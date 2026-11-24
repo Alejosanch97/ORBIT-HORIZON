@@ -10,7 +10,7 @@ import { LumiDash } from './LumiDash';
 import { normalizeQuestions, GAME_CATALOG } from './gameUtils';
 import useGlobalReducer from '../hooks/useGlobalReducer';
 import { YearSelect } from '../components/YearSelect';
-import { ensureSchoolYear, getCurrentYear, getViewYear, recordYear } from '../schoolYear';
+import { ensureSchoolYear, getCurrentYear, getViewYear, recordYear, getYearOptions } from '../schoolYear';
 
 // Base del backend propio. Como el blueprint se registra con url_prefix='/api',
 // aquí incluimos el /api. VITE_BACKEND_URL NO debe terminar en /api.
@@ -2966,10 +2966,18 @@ Teacher goal: ${pv.goal}`;
                                                     </select>
                                                 </div>
                                                 <div className="input-group"><label>Term</label>
-                                                    <select required value={fd.Term || ""} onChange={(e) => handleTermChange(grade, e.target.value)}>
-                                                        <option value="">Select Term...</option>{TERMS.map(t => <option key={t} value={t}>{t}</option>)}
-                                                    </select>
-                                                </div>
+                                                {fd.id && (
+                                                    <div className="input-group"><label>School Year</label>
+                                                        <select
+                                                            value={recordYear(fd)}
+                                                            onChange={(e) => handleInputChange(grade, "School_Year", Number(e.target.value))}
+                                                        >
+                                                            {getYearOptions(store).map(y => (
+                                                                <option key={y} value={y}>{y}{y === currentYear ? ' (actual)' : ''}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                )}
                                                 <div className="input-group">
                                                     <label>Session Number / Range</label>
                                                     <input
