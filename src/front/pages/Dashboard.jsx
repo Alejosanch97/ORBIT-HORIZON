@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "../Styles/dashboard.css";
-import { LayoutDashboard, NotebookPen, CalendarDays, Search, LogOut, ChevronRight, RefreshCw, Target, ClipboardList, Trophy, Link2, BookOpen, Wrench, GraduationCap, ArrowRight, Plus, Check, Circle, Users, AlertTriangle, Send, Building2, UserPlus, Table, ShieldCheck, Brain } from 'lucide-react';
+import { LayoutDashboard, NotebookPen, CalendarDays, Search, LogOut, ChevronRight, RefreshCw, Target, ClipboardList, Trophy, Link2, BookOpen, Wrench, GraduationCap, ArrowRight, Plus, Check, Circle, Users, AlertTriangle, Send, Building2, UserPlus, Table, ShieldCheck, Brain, KeyRound, Copy } from 'lucide-react';
 import useGlobalReducer from '../hooks/useGlobalReducer';
 
 import { PlanningCLIL } from "./PlanningCLIL";
@@ -15,6 +15,7 @@ import { SuperAdminCompanies } from './SuperAdminCompanies';
 import { SuperAdminUsers } from './SuperAdminUsers';
 import { DataTableEditor } from './DataTableEditor';
 import { CurriculumEditor } from './CurriculumEditor';
+import { GroqKeyModal } from '../components/GroqKeyModal';
 import { YearSelect } from '../components/YearSelect';
 import { ensureSchoolYear, getViewYear, getCurrentYear } from '../schoolYear';
 
@@ -55,6 +56,13 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
     const [userData, setUserData] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [showVocabModal, setShowVocabModal] = useState(false);
+    // Filtros del vocabulario (compartidos entre el panel y el modal)
+    const [vocabTerm, setVocabTerm] = useState('');
+    const [vocabGrade, setVocabGrade] = useState('');
+    const [vocabCopied, setVocabCopied] = useState(false);
+    // API key personal de Groq: { has_key, hint } y si se muestra el pop up
+    const [groqStatus, setGroqStatus] = useState(null);
+    const [groqModal, setGroqModal] = useState(null); // null | 'prompt' | 'manage'
     const [showChallengeModal, setShowChallengeModal] = useState(false);
     const [showResourceModal, setShowResourceModal] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -177,6 +185,20 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
         }
     }, [propUser, navigate]);
 
+    // ¿El docente ya conectó su API key de Groq? Si no, sale el pop up al entrar.
+    useEffect(() => {
+        const uk = userData?.User_Key;
+        if (!uk) return;
+        fetch(`${API}/teachers-users/${encodeURIComponent(uk)}/groq-key`)
+            .then(r => r.json())
+            .then(d => {
+                if (d?.status !== 'success') return;
+                setGroqStatus({ has_key: d.has_key, hint: d.hint });
+                if (!d.has_key && !sessionStorage.getItem('groqKeyLater')) setGroqModal('prompt');
+            })
+            .catch(() => { });
+    }, [userData?.User_Key]);
+
     // Año escolar vigente desde el backend (una vez)
     useEffect(() => { ensureSchoolYear(API, dispatch); }, []);
 
@@ -298,6 +320,59 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
             return myKeys.includes(pt);
         });
     }, [lessonPlanners, userData, teacherKey, teacherName]);
+
+    /* ---------- Vocabulario por periodo (Spelling Bee) ---------- */
+    const VOCAB_TERM_ORDER = ["First Term", "Second Term", "Third Term", "Fourth Term"];
+    const vocabRaw = (p) => p["Vocabulary Big 5"] || p.Vocabulary_Big_5 || p.Big_5 || "";
+    // Separa por comas, punto y coma, saltos de línea o guiones con espacios ("Fat -Thin")
+    const splitVocab = (raw) => String(raw || "")
+        .split(/[,;\n]+|\s+-\s*|\s*-\s+/)
+        .map(w => w.trim())
+        .filter(Boolean);
+
+    const vocabTermOptions = useMemo(() => {
+        const present = [...new Set(vocabularyData.filter(p => vocabRaw(p)).map(p => p.Term).filter(Boolean))];
+        return [...VOCAB_TERM_ORDER.filter(t => present.includes(t)), ...present.filter(t => !VOCAB_TERM_ORDER.includes(t))];
+    }, [vocabularyData]);
+
+    const vocabGradeOptions = useMemo(() =>
+        [...new Set(vocabularyData.filter(p => vocabRaw(p)).map(p => p.Grade).filter(Boolean))],
+    [vocabularyData]);
+
+    const filteredVocabPlans = useMemo(() => vocabularyData
+        .filter(p => vocabRaw(p) &&
+            (!vocabTerm || p.Term === vocabTerm) &&
+            (!vocabGrade || p.Grade === vocabGrade))
+        .sort((a, b) => {
+            const ta = VOCAB_TERM_ORDER.indexOf(a.Term), tb = VOCAB_TERM_ORDER.indexOf(b.Term);
+            if (ta !== tb) return (ta < 0 ? 99 : ta) - (tb < 0 ? 99 : tb);
+            return (parseInt(a.Session_Number) || 0) - (parseInt(b.Session_Number) || 0);
+        }),
+    [vocabularyData, vocabTerm, vocabGrade]);
+
+    const filteredVocabWords = useMemo(() => {
+        const seen = new Set(), out = [];
+        filteredVocabPlans.forEach(p => splitVocab(vocabRaw(p)).forEach(w => {
+            const k = w.toLowerCase();
+            if (!seen.has(k)) { seen.add(k); out.push(w); }
+        }));
+        return out;
+    }, [filteredVocabPlans]);
+
+    // Copia una palabra por línea (listo para pegar en la lista del Spelling Bee)
+    const copyVocab = async () => {
+        const text = filteredVocabWords.join("\n");
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch {
+            const ta = document.createElement("textarea");
+            ta.value = text; document.body.appendChild(ta); ta.select();
+            document.execCommand("copy"); document.body.removeChild(ta);
+        }
+        setVocabCopied(true);
+        setTimeout(() => setVocabCopied(false), 2000);
+    };
 
     const simpleVocabList = useMemo(() => {
         const allWords = vocabularyData
@@ -747,13 +822,26 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
                                     </button>
                                 </div>
                                 <div className="panel-body">
-                                    {simpleVocabList.length > 0 ? (
+                                    <div className="vb-toolbar">
+                                        <select className="vb-select" value={vocabTerm} onChange={e => setVocabTerm(e.target.value)}>
+                                            <option value="">Todos los periodos</option>
+                                            {vocabTermOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                                        </select>
+                                        <button className={`vb-copy ${vocabCopied ? 'done' : ''}`} onClick={copyVocab} disabled={!filteredVocabWords.length}>
+                                            {vocabCopied ? <Check size={14} strokeWidth={2.6} /> : <Copy size={14} strokeWidth={2.4} />}
+                                            {vocabCopied ? 'Copiadas' : `Copiar ${filteredVocabWords.length}`}
+                                        </button>
+                                    </div>
+                                    {filteredVocabWords.length > 0 ? (
                                         <div className="vocab-chips">
-                                            {simpleVocabList.slice(-8).map((v, i) => (
+                                            {filteredVocabWords.slice(0, 12).map((v, i) => (
                                                 <span key={i} className="vocab-chip">{v}</span>
                                             ))}
+                                            {filteredVocabWords.length > 12 && (
+                                                <button className="vocab-chip vb-more" onClick={() => setShowVocabModal(true)}>+{filteredVocabWords.length - 12}</button>
+                                            )}
                                         </div>
-                                    ) : <p className="panel-empty">Sin vocabulario registrado.</p>}
+                                    ) : <p className="panel-empty">{vocabTerm ? `Sin vocabulario en ${vocabTerm}.` : 'Sin vocabulario registrado.'}</p>}
                                 </div>
                             </section>
 
@@ -908,6 +996,16 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
                         <span className="ls-item-glow" />
                         <Brain className="ls-icon" size={19} strokeWidth={2} />
                         <span className="ls-label">Mallas</span>
+                        <ChevronRight className="ls-chevron" size={15} strokeWidth={2.5} />
+                    </button>
+
+                    <button
+                        className="ls-item"
+                        onClick={() => { setGroqModal(groqStatus?.has_key ? 'manage' : 'prompt'); setIsMobileMenuOpen(false); }}
+                    >
+                        <span className="ls-item-glow" />
+                        <KeyRound className="ls-icon" size={19} strokeWidth={2} />
+                        <span className="ls-label">Mi API key{groqStatus && !groqStatus.has_key ? ' ⚠️' : ''}</span>
                         <ChevronRight className="ls-chevron" size={15} strokeWidth={2.5} />
                     </button>
 
@@ -1103,21 +1201,55 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
                 </div>
             )}
 
+            {groqModal && userData?.User_Key && (
+                <GroqKeyModal
+                    userKey={userData.User_Key}
+                    status={groqStatus}
+                    onSaved={(st) => setGroqStatus(st)}
+                    onLater={groqModal === 'prompt' ? () => { sessionStorage.setItem('groqKeyLater', '1'); setGroqModal(null); } : undefined}
+                    onClose={() => setGroqModal(null)}
+                />
+            )}
+
             {showVocabModal && (
                 <div className="modal-overlay" onClick={() => setShowVocabModal(false)}>
                     <div className="vocab-v2-window" onClick={e => e.stopPropagation()}>
                         <div className="vocab-v2-header">
                             <h2>📚 Vocabulary Bank</h2>
                             <button className="vocab-v2-close" onClick={() => setShowVocabModal(false)}>×</button>
+                            <div className="vb-modal-bar">
+                                <select className="vb-select" value={vocabTerm} onChange={e => setVocabTerm(e.target.value)}>
+                                    <option value="">Todos los periodos</option>
+                                    {vocabTermOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                                {vocabGradeOptions.length > 1 && (
+                                    <select className="vb-select" value={vocabGrade} onChange={e => setVocabGrade(e.target.value)}>
+                                        <option value="">Todos los grados</option>
+                                        {vocabGradeOptions.map(g => <option key={g} value={g}>{g}</option>)}
+                                    </select>
+                                )}
+                                <span className="vb-count"><strong>{filteredVocabWords.length}</strong> palabras · {filteredVocabPlans.length} planeaciones</span>
+                                <button className={`vb-copy big ${vocabCopied ? 'done' : ''}`} onClick={copyVocab} disabled={!filteredVocabWords.length}>
+                                    {vocabCopied ? <Check size={16} strokeWidth={2.6} /> : <Copy size={16} strokeWidth={2.4} />}
+                                    {vocabCopied ? '¡Copiadas!' : 'Copiar para Spelling Bee'}
+                                </button>
+                            </div>
                         </div>
                         <div className="vocab-v2-grid">
-                            {vocabularyData.map((plan, idx) => (
-                                <div key={idx} className="vocab-v2-card">
-                                    <div className="vocab-v2-meta">
-                                        <span>{plan.Grade} - {plan.Subject}</span>
-                                        <small>{plan.Unit || "No Unit"}</small>
+                            {filteredVocabPlans.length === 0 && (
+                                <p className="panel-empty">No hay vocabulario con ese filtro.</p>
+                            )}
+                            {filteredVocabPlans.map((plan, idx) => (
+                                <div key={plan.ID_Setup || idx} className="vocab-v2-card">
+                                    <div className="vb-card-meta">
+                                        <span className="vb-term">{plan.Term || 'Sin periodo'}</span>
+                                        <span>{plan.Grade} · {plan.Subject}</span>
+                                        {plan.Session_Number && <small>Sesión {plan.Session_Number}</small>}
                                     </div>
-                                    <p className="vocab-v2-words">{plan["Vocabulary Big 5"] || plan.Vocabulary_Big_5 || plan.Big_5}</p>
+                                    {plan.Topic && <p className="vb-topic">{plan.Topic}</p>}
+                                    <div className="vb-words">
+                                        {splitVocab(vocabRaw(plan)).map((w, i) => <span key={i}>{w}</span>)}
+                                    </div>
                                 </div>
                             ))}
                         </div>

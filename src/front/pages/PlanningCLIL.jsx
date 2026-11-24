@@ -1500,7 +1500,7 @@ Teacher goal: ${pv.goal}`;
             const resp = await fetch(`${API}/generate-lumi`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: fullPrompt })
+                body: JSON.stringify({ prompt: fullPrompt, user_key: userData?.User_Key })
             });
             const data = await resp.json();
 
@@ -1652,7 +1652,7 @@ Teacher goal: ${pv.goal}`;
                 const resp = await fetch(`${API}/generate-lumi`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: singlePrompt })
+                    body: JSON.stringify({ prompt: singlePrompt, user_key: userData?.User_Key })
                 });
                 const data = await resp.json();
 

@@ -13,7 +13,7 @@ from flask_cors import CORS
 import json
 from datetime import datetime
 
-from api.ai_service import generate_with_fallback
+from api.ai_service import generate_with_fallback, verify_groq_key
 from api.school_year import (
     FIRST_SCHOOL_YEAR, current_school_year, to_year,
     apply_year_filter, year_for_new_record
@@ -576,6 +576,60 @@ def get_teachers_users():
 
 
 # ==========================================
+# API KEY PERSONAL DE GROQ (por docente)
+# La key nunca sale del backend: solo se informa si existe y sus últimos 4 caracteres.
+# ==========================================
+def _groq_status(teacher):
+    return {"status": "success",
+            "has_key": bool((teacher.Groq_API_Key or '').strip()),
+            "hint": teacher.groq_key_hint()}
+
+
+@api.route('/teachers-users/<string:user_key>/groq-key', methods=['GET'])
+def get_groq_key_status(user_key):
+    teacher = TeachersUsers.query.filter_by(User_Key=user_key).first()
+    if not teacher:
+        return jsonify({"status": "error", "message": "Usuario no encontrado"}), 404
+    return jsonify(_groq_status(teacher)), 200
+
+
+@api.route('/teachers-users/<string:user_key>/groq-key', methods=['PUT'])
+def set_groq_key(user_key):
+    teacher = TeachersUsers.query.filter_by(User_Key=user_key).first()
+    if not teacher:
+        return jsonify({"status": "error", "message": "Usuario no encontrado"}), 404
+    body = request.get_json(silent=True) or {}
+    api_key = str(body.get('api_key') or '').strip()
+    if not api_key.startswith('gsk_') or len(api_key) < 30 or ' ' in api_key:
+        return jsonify({"status": "error",
+                        "message": "Eso no parece una API key de Groq (empieza por gsk_)."}), 400
+    ok, msg = verify_groq_key(api_key)
+    if not ok:
+        return jsonify({"status": "error", "message": msg}), 400
+    try:
+        teacher.Groq_API_Key = api_key
+        db.session.commit()
+        return jsonify(_groq_status(teacher)), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@api.route('/teachers-users/<string:user_key>/groq-key', methods=['DELETE'])
+def delete_groq_key(user_key):
+    teacher = TeachersUsers.query.filter_by(User_Key=user_key).first()
+    if not teacher:
+        return jsonify({"status": "error", "message": "Usuario no encontrado"}), 404
+    try:
+        teacher.Groq_API_Key = None
+        db.session.commit()
+        return jsonify(_groq_status(teacher)), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# ==========================================
 # TEACHER NOTIFICATIONS
 # ==========================================
 @api.route('/teacher-notifications', methods=['GET'])
@@ -970,7 +1024,18 @@ def generate_lumi():
     if not prompt or not str(prompt).strip():
         return jsonify({"status": "error", "message": "El prompt es requerido"}), 400
 
-    text, provider, errors = generate_with_fallback(prompt)
+    # Key personal del docente (si la configuró): se usa antes que las del colegio
+    personal_key = None
+    user_key = str(body.get('user_key') or '').strip()
+    if user_key:
+        try:
+            t = TeachersUsers.query.filter_by(User_Key=user_key).first()
+            if t and (t.Groq_API_Key or '').strip():
+                personal_key = t.Groq_API_Key.strip()
+        except Exception:
+            db.session.rollback()
+
+    text, provider, errors = generate_with_fallback(prompt, personal_key=personal_key)
 
     # Registro opcional en LogsIA (no rompe si falla)
     try:
@@ -1023,7 +1088,8 @@ def _editable_columns(model):
     """Columnas de la tabla que el usuario puede editar (excluye id y relaciones)."""
     cols = []
     for c in model.__table__.columns:
-        if c.name in ('id',):
+        # id no se edita; las API keys personales nunca se muestran en "Datos en tabla"
+        if c.name in ('id', 'Groq_API_Key'):
             continue
         cols.append(c.name)
     return cols

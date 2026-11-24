@@ -102,9 +102,15 @@ class TeachersUsers(db.Model):
     Total_Lessons: Mapped[int] = mapped_column(Integer, nullable=True)
     Password: Mapped[str] = mapped_column(String(255), nullable=False)
     ROL: Mapped[str] = mapped_column(String(50), nullable=False)
+    # API key personal de Groq del docente. NUNCA se envía al frontend (ver serialize).
+    Groq_API_Key: Mapped[str] = mapped_column(String(255), nullable=True)
 
     colegio: Mapped["Colegio"] = relationship(
         "Colegio", back_populates="teachers_users")
+
+    def groq_key_hint(self):
+        k = (self.Groq_API_Key or '').strip()
+        return f"…{k[-4:]}" if len(k) >= 8 else None
 
     def serialize(self):
         return {
@@ -115,7 +121,10 @@ class TeachersUsers(db.Model):
             "Assigned_Grade": self.Assigned_Grade,
             "Assigned_Subject": self.Assigned_Subject,
             "Total_Lessons": self.Total_Lessons,
-            "ROL": self.ROL
+            "ROL": self.ROL,
+            # Solo se informa SI tiene key y sus últimos 4 caracteres
+            "Has_Groq_Key": bool((self.Groq_API_Key or '').strip()),
+            "Groq_Key_Hint": self.groq_key_hint()
         }
 
 
