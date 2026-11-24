@@ -2966,7 +2966,12 @@ Teacher goal: ${pv.goal}`;
                                                     </select>
                                                 </div>
                                                 <div className="input-group"><label>Term</label>
-                                                {fd.id && (
+                                                    <select required value={fd.Term || ""} onChange={(e) => handleTermChange(grade, e.target.value)}>
+                                                        <option value="">Select Term...</option>{TERMS.map(t => <option key={t} value={t}>{t}</option>)}
+                                                    </select>
+                                                </div>
+
+                                                                                                {fd.id && (
                                                     <div className="input-group"><label>School Year</label>
                                                         <select
                                                             value={recordYear(fd)}
