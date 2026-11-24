@@ -1449,6 +1449,28 @@ export const PlanningCLIL = ({ userData }) => {
         };
     };
 
+    /* Último número de sesión ya usado en la secuencia (grado + materia + periodo + docente,
+       año vigente). Si ese periodo aún no está cargado, lo consulta al backend. */
+    const nextSessionStart = async (grade, subject, term) => {
+        const teacherKey = String(userData.Teacher_Key || userData.User_Key || "").trim();
+        const sameSeq = (p) =>
+            norm(p.Grade) === norm(grade) &&
+            norm(p.Subject) === norm(subject) &&
+            norm(p.Term) === norm(term) &&
+            recordYear(p) === currentYear &&
+            String(p.Teacher || p.Teacher_Key || '').trim() === teacherKey;
+        let pool = plannings;
+        const loaded = loadedTerms.current.has(`${currentYear}|${term}`) || loadedTerms.current.has(`${currentYear}|*`);
+        if (!loaded) {
+            try {
+                const r = await fetch(`${API}/lesson-planners?year=${currentYear}&term=${encodeURIComponent(term)}`);
+                const d = await r.json();
+                if (Array.isArray(d)) pool = [...plannings, ...d];
+            } catch (e) { console.warn('[nextSessionStart] no se pudo consultar', e); }
+        }
+        return pool.filter(sameSeq).reduce((max, p) => Math.max(max, maxSessionNum(p.Session_Number)), 0);
+    };
+
     /* Genera las N sesiones PR1ME en UNA sola llamada, con prompt compacto (tokens de entrada mínimos) */
     const submitPrimeFields = async () => {
         // Validar cada sesión
@@ -1526,8 +1548,9 @@ Teacher goal: ${pv.goal}`;
 
             console.log('[PR1ME] solicitadas:', primeSessions.length, '| generadas:', arr.length);
 
+            const primeStart = await nextSessionStart(selGrade, selSubject, selTerm);
             const normalized = arr.slice(0, primeSessions.length).map((s, i) => {
-                s.Session_Number = String(i + 1);
+                s.Session_Number = String(primeStart + i + 1); // consecutivo real (ej. 3, 4…)
                 return normalizeGenSession(s, i);
             });
 
@@ -1624,6 +1647,9 @@ Teacher goal: ${pv.goal}`;
             pushLumi(`🧠 Voy a diseñar tus ${sessions} sesiones una por una para máxima calidad. Empecemos…`, 400);
         }
 
+        // Consecutivo real: si ya hay sesiones 1 y 2 en esta secuencia, las nuevas son 3, 4…
+        const seqStart = await nextSessionStart(selGrade, selSubject, selTerm);
+
         const collected = [];
         try {
             for (let i = 0; i < sessions; i++) {
@@ -1672,7 +1698,7 @@ Teacher goal: ${pv.goal}`;
                     continue;
                 }
 
-                one.Session_Number = String(collected.length + 1);
+                one.Session_Number = String(seqStart + collected.length + 1);
                 collected.push(normalizeGenSession(one, collected.length));
             }
 
@@ -1693,7 +1719,7 @@ Teacher goal: ${pv.goal}`;
         } catch (e) {
             // Si ya alcanzamos a generar algunas, no las perdemos
             if (collected.length) {
-                collected.forEach((s, i) => { s.Session_Number = String(i + 1); });
+                collected.forEach((s, i) => { s.Session_Number = String(seqStart + i + 1); });
                 setGenSessions(collected);
                 setAiCooldown(45);
                 pushLumi(`⚠️ Se cortó la conexión, pero alcancé a diseñar ${collected.length} sesión(es). Revísalas abajo.`, 300);
@@ -1818,8 +1844,12 @@ Teacher goal: ${pv.goal}`;
                 School_Year: Number(s.School_Year) || currentYear,
                 "Start Date": s["Start Date"] || "",
                 "Finish Date": s["Finish Date"] || "",
-                // Si es edición conserva su número; si es nueva calcula el consecutivo
-                Session_Number: s.Session_Number ? String(s.Session_Number) : String(startFrom + i + 1),
+                // Edición: conserva su número. Nueva: nunca puede quedar por debajo de lo ya guardado
+                Session_Number: esEdicion
+                    ? String(s.Session_Number || '')
+                    : (maxSessionNum(s.Session_Number) > startFrom
+                        ? String(s.Session_Number)
+                        : String(startFrom + i + 1)),
                 Topic: s.Topic,
                 Objective: s.Objective,
                 "The Hook": s["The Hook"],
@@ -2280,20 +2310,22 @@ Teacher goal: ${pv.goal}`;
         (filterTerm === "" || p.Term === filterTerm)
     );
     const isFiltered = filterGrade !== "" || filterSubject !== "" || filterTerm !== "";
-    // ORDEN: última primero (invertimos)
-    const orderedPlannings = [...filteredPlannings].sort((a, b) => {
-        // Extrae la marca de tiempo si el ID contiene un timestamp (Ej: AI-1710000000000-0 o ID-1710000000000)
-        const getTime = (p) => {
-            const match = String(p.ID_Setup || '').match(/\d{13}/);
-            return match ? parseInt(match[0], 10) : 0;
-        };
-        const timeA = getTime(a);
-        const timeB = getTime(b);
-
-        if (timeA && timeB) return timeB - timeA;
-        // Si no hay timestamp en el ID, usa la fecha de inicio
-        return new Date(b["Start Date"] || b.Start_Date || 0) - new Date(a["Start Date"] || a.Start_Date || 0);
-    });
+    // ORDEN: la más reciente primero. Clave única y consistente para que nunca salga en desorden:
+    // 1) hora de creación (timestamp del ID) · 2) número de sesión · 3) fecha de inicio · 4) id de la base
+    const createdAt = (p) => {
+        const m = String(p.ID_Setup || '').match(/\d{13}/);
+        return m ? parseInt(m[0], 10) : 0;
+    };
+    const startTs = (p) => {
+        const t = new Date(p["Start Date"] || p.Start_Date || 0).getTime();
+        return isNaN(t) ? 0 : t;
+    };
+    const orderedPlannings = [...filteredPlannings].sort((a, b) =>
+        (createdAt(b) - createdAt(a)) ||
+        (maxSessionNum(b.Session_Number) - maxSessionNum(a.Session_Number)) ||
+        (startTs(b) - startTs(a)) ||
+        ((Number(b.id) || 0) - (Number(a.id) || 0))
+    );
     const displayedPlannings = isFiltered ? orderedPlannings : orderedPlannings.slice(0, 15);
 
     /* ============================================================
