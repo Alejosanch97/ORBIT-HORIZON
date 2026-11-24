@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import "../Styles/dashboard.css";
-import { LayoutDashboard, NotebookPen, CalendarDays, Search, LogOut, ChevronRight, RefreshCw, Target, ClipboardList, Trophy, Link2, BookOpen, Wrench, GraduationCap, ArrowRight, Plus, Check, Circle, Users, AlertTriangle, Send, Building2, UserPlus, Table, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, NotebookPen, CalendarDays, Search, LogOut, ChevronRight, RefreshCw, Target, ClipboardList, Trophy, Link2, BookOpen, Wrench, GraduationCap, ArrowRight, Plus, Check, Circle, Users, AlertTriangle, Send, Building2, UserPlus, Table, ShieldCheck, Brain } from 'lucide-react';
 import useGlobalReducer from '../hooks/useGlobalReducer';
 
 import { PlanningCLIL } from "./PlanningCLIL";
@@ -14,6 +14,7 @@ import { NotificationsSender } from './NotificationsSender';
 import { SuperAdminCompanies } from './SuperAdminCompanies';
 import { SuperAdminUsers } from './SuperAdminUsers';
 import { DataTableEditor } from './DataTableEditor';
+import { CurriculumEditor } from './CurriculumEditor';
 import { YearSelect } from '../components/YearSelect';
 import { ensureSchoolYear, getViewYear, getCurrentYear } from '../schoolYear';
 
@@ -846,6 +847,7 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
             case "sa_companies": return <SuperAdminCompanies userData={userData} />;
             case "sa_users": return <SuperAdminUsers userData={userData} />;
             case "sa_data": return <DataTableEditor userData={userData} />;
+            case "mallas": return <CurriculumEditor userData={userData} onExit={() => setActiveTab("profile")} />;
             default: return null;
         }
     };
@@ -896,6 +898,16 @@ export const Dashboard = ({ user: propUser, onLogout }) => {
                         <span className="ls-item-glow" />
                         <CalendarDays className="ls-icon" size={19} strokeWidth={2} />
                         <span className="ls-label">Activities</span>
+                        <ChevronRight className="ls-chevron" size={15} strokeWidth={2.5} />
+                    </button>
+
+                    <button
+                        className={`ls-item ${activeTab === "mallas" ? "on" : ""}`}
+                        onClick={() => { setActiveTab("mallas"); setIsMobileMenuOpen(false); }}
+                    >
+                        <span className="ls-item-glow" />
+                        <Brain className="ls-icon" size={19} strokeWidth={2} />
+                        <span className="ls-label">Mallas</span>
                         <ChevronRight className="ls-chevron" size={15} strokeWidth={2.5} />
                     </button>
 

@@ -884,6 +884,45 @@ def get_curriculum_maps():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
+@api.route('/curriculum-maps/<int:map_id>', methods=['PUT'])
+def update_curriculum_map(map_id):
+    """Editor de Mallas: actualiza SOLO el Content_JSON de una malla.
+    Valida que sea JSON válido y que no se pierda la estructura que lee Lumi."""
+    try:
+        malla = db.session.get(CurriculumMaps, map_id)
+        if not malla:
+            return jsonify({"status": "error", "message": "Malla no encontrada"}), 404
+
+        body = request.get_json(silent=True) or {}
+        raw = body.get('Content_JSON')
+        if raw is None:
+            return jsonify({"status": "error", "message": "Falta Content_JSON"}), 400
+
+        try:
+            new_json = json.loads(raw) if isinstance(raw, str) else raw
+        except (ValueError, TypeError):
+            return jsonify({"status": "error", "message": "El JSON no es válido"}), 400
+        if not isinstance(new_json, dict):
+            return jsonify({"status": "error", "message": "El JSON debe ser un objeto { ... }"}), 400
+
+        # Protección: si antes había periodos (terms), deben seguir existiendo
+        try:
+            old_json = json.loads(malla.Content_JSON or '{}')
+        except (ValueError, TypeError):
+            old_json = {}
+        if isinstance(old_json, dict) and isinstance(old_json.get('terms'), list) and old_json['terms']:
+            if not isinstance(new_json.get('terms'), list) or not new_json['terms']:
+                return jsonify({"status": "error",
+                                "message": "No se puede quitar 'terms': Lumi lo necesita"}), 400
+
+        malla.Content_JSON = json.dumps(new_json, ensure_ascii=False, indent=2)
+        db.session.commit()
+        return jsonify({"status": "success", "data": malla.serialize()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
 @api.route('/syllabus-templates', methods=['GET'])
 def get_syllabus_templates():
     try:
