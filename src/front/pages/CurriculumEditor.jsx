@@ -94,6 +94,23 @@ const pathLabel = (json, path) => {
 
 const pathKey = (path) => path.join('.');
 
+/* ---- Mallas del docente: solo sus materias y grados (igual que en Planning) ---- */
+const normTxt = (v) => String(v || '').trim().toUpperCase();
+const splitList = (v) => String(v || '').split(',').map(x => x.trim()).filter(Boolean);
+const mathFamily = (s) => /math|matem|geomet|statis|estad|calcul/i.test(String(s || ''));
+const scienceFamily = (s) => /science|scien|cienc|health|nutrition|nutric|salud|chemi|quimic|químic|physic|física|fisica|biolog/i.test(String(s || ''));
+const subjectMatches = (mine, row) =>
+    normTxt(mine) === normTxt(row) ||
+    (mathFamily(mine) && mathFamily(row)) ||
+    (scienceFamily(mine) && scienceFamily(row));
+const isMyMalla = (m, user) => {
+    const subjects = splitList(user?.Assigned_Subject);
+    const grades = splitList(user?.Assigned_Grade).map(normTxt);
+    if (!subjects.length) return false;
+    return subjects.some(sub => subjectMatches(sub, m.Subject)) &&
+        (!grades.length || grades.includes(normTxt(m.Grade)));
+};
+
 /* ============================================================
    Pop up gigante: "Este es el cerebro de Lumi"
    ============================================================ */
@@ -280,6 +297,10 @@ export const CurriculumEditor = ({ userData, onExit }) => {
             let list = Array.isArray(data) ? data : [];
             const myColegio = userData?.colegio_id;
             if (myColegio) list = list.filter(m => !m.colegio_id || String(m.colegio_id) === String(myColegio));
+            // Admin y Super Admin ven todas; cada docente solo las de sus materias y grados
+            const rol = String(userData?.ROL || '').trim().toLowerCase();
+            const seeAll = rol === 'admin' || rol.includes('super');
+            if (!seeAll) list = list.filter(m => isMyMalla(m, userData));
             setMaps(list);
             dispatch({ type: 'set_curriculum_maps', payload: list });
         } catch (e) {
